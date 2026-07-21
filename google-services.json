@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "223201246269",
+    "firebase_url": "https://sge-sec-diarra-default-rtdb.firebaseio.com",
+    "project_id": "sge-sec-diarra",
+    "storage_bucket": "sge-sec-diarra.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223201246269:android:58611f4b69ab3f194afe54",
+        "android_client_info": {
+          "package_name": "com.sge.secdiarra"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "223201246269-ga24r99893f5dnb9t2hr4t2bnrt6cc8i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC-CFwiuRIl4TCQNy-z7JZgyNAYADPyGS8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "223201246269-ga24r99893f5dnb9t2hr4t2bnrt6cc8i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
