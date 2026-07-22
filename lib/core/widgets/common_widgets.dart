@@ -38,36 +38,73 @@ class StatCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
+                SizedBox(
+                  height: 42,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(icon, color: color, size: 22),
+                      ),
+                      if (subtitle != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            subtitle!,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-                  child: Icon(icon, color: color, size: 22),
                 ),
-                if (subtitle != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                const Spacer(),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: color,
                     ),
-                    child: Text(subtitle!, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
                   ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: color)),
-            const SizedBox(height: 4),
-            Text(title, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -96,7 +133,13 @@ class EmptyState extends StatelessWidget {
         children: [
           Icon(icon, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+            ),
+          ),
           if (actionLabel != null) ...[
             const SizedBox(height: 16),
             ElevatedButton(onPressed: onAction, child: Text(actionLabel!)),
@@ -135,17 +178,27 @@ class EmployeeAvatar extends StatelessWidget {
     if (photoUrl != null && photoUrl!.isNotEmpty) {
       final provider = _imageProvider(photoUrl!);
       if (provider != null) {
-        return CircleAvatar(
-          radius: radius,
-          backgroundImage: provider,
-        );
+        return CircleAvatar(radius: radius, backgroundImage: provider);
       }
     }
-    final initials = name.trim().split(' ').take(2).map((w) => w.isNotEmpty ? w[0] : '').join().toUpperCase();
+    final initials = name
+        .trim()
+        .split(' ')
+        .take(2)
+        .map((w) => w.isNotEmpty ? w[0] : '')
+        .join()
+        .toUpperCase();
     return CircleAvatar(
       radius: radius,
       backgroundColor: AppColors.primary.withOpacity(0.15),
-      child: Text(initials, style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: radius * 0.6)),
+      child: Text(
+        initials,
+        style: TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.bold,
+          fontSize: radius * 0.6,
+        ),
+      ),
     );
   }
 
@@ -176,7 +229,14 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: config.$1.withOpacity(0.3)),
       ),
-      child: Text(config.$2, style: TextStyle(color: config.$1, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        config.$2,
+        style: TextStyle(
+          color: config.$1,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -211,7 +271,12 @@ class SectionHeader extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
-  const SectionHeader({super.key, required this.title, this.actionLabel, this.onAction});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.actionLabel,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -326,7 +391,10 @@ class ConfirmDialog extends StatelessWidget {
       title: Text(title),
       content: Text(message),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Annuler'),
+        ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: confirmColor),
           onPressed: () => Navigator.pop(context, true),
@@ -346,7 +414,11 @@ void showSnack(BuildContext context, String message, {bool isError = false}) {
   );
 }
 
-Future<bool> showConfirm(BuildContext context, {required String title, required String message}) async {
+Future<bool> showConfirm(
+  BuildContext context, {
+  required String title,
+  required String message,
+}) async {
   return await showDialog<bool>(
         context: context,
         builder: (_) => ConfirmDialog(title: title, message: message),

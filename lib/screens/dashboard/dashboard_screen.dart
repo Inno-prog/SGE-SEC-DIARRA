@@ -38,134 +38,91 @@ class _AdminDashboard extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 120,
-              floating: true,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Bienvenue sur SGE SEC DIARRA, ${ref.watch(currentUserProvider)?.prenom ?? ''} ',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(top: 0),
+          child: Column(
+            children: [
+              // Welcome header
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} 👋',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        DateFormat(
-                          'EEEE d MMMM yyyy',
-                          'fr_FR',
-                        ).format(DateTime.now()),
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
+                    ),
+                    Text(
+                      DateFormat(
+                        'EEEE d MMMM yyyy',
+                        'fr_FR',
+                      ).format(DateTime.now()),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              // Stats Grid
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: stats.when(
+                  data: (data) => _StatsGrid(stats: data),
+                  loading: () =>
+                      const SizedBox(height: 200, child: LoadingWidget()),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Erreur: $e",
+                      style: const TextStyle(color: AppColors.error),
+                    ),
                   ),
                 ),
               ),
-              actions: [
-                Consumer(
-                  builder: (_, ref, __) {
-                    final count = ref.watch(unreadNotificationsCountProvider);
-                    return Stack(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
-                          ),
-                          onPressed: () => context.go(AppRoutes.notifications),
-                        ),
-                        if (count > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: AppColors.gold,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '$count',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
+              // Alertes
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _AlertsSection(
+                  pendingLeaves: pendingLeaves.value ?? [],
+                  expiringContracts: expiringContracts.value ?? [],
                 ),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Stats Grid
-                  stats.when(
-                    data: (data) => _StatsGrid(stats: data),
-                    loading: () =>
-                        const SizedBox(height: 200, child: LoadingWidget()),
-                    error: (e, _) => Center(
-                      child: Text(
-                        "Erreur: $e",
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Alertes
-                  _AlertsSection(
-                    pendingLeaves: pendingLeaves.value ?? [],
-                    expiringContracts: expiringContracts.value ?? [],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Graphique présences
-                  const _AttendanceChart(),
-                  const SizedBox(height: 20),
-
-                  // Répartition par département
-                  const _DeptChart(),
-                  const SizedBox(height: 20),
-
-                  // Anniversaires
-                  birthdays.when(
-                    data: (list) => list.isEmpty
-                        ? const SizedBox()
-                        : _BirthdaysSection(employees: list),
-                    loading: () => const SizedBox(),
-                    error: (e, _) => Center(
-                      child: Text(
-                        "Erreur: $e",
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 80),
-                ]),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              // Répartition par département
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: _DeptChart(),
+              ),
+              const SizedBox(height: 20),
+              // Anniversaires
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: birthdays.when(
+                  data: (list) => list.isEmpty
+                      ? const SizedBox()
+                      : _BirthdaysSection(employees: list),
+                  loading: () => const SizedBox(),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Erreur: $e",
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );
@@ -185,130 +142,90 @@ class _RHDashboard extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              expandedHeight: 120,
-              floating: true,
-              pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} 👋',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            children: [
+              // Welcome header
+              Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                ),
+                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} 👋',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        DateFormat(
-                          'EEEE d MMMM yyyy',
-                          'fr_FR',
-                        ).format(DateTime.now()),
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
+                    ),
+                    Text(
+                      DateFormat(
+                        'EEEE d MMMM yyyy',
+                        'fr_FR',
+                      ).format(DateTime.now()),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              // Stats Grid (sans les indicateurs financiers)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: stats.when(
+                  data: (data) => _StatsGrid(stats: data),
+                  loading: () =>
+                      const SizedBox(height: 200, child: LoadingWidget()),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Erreur: $e",
+                      style: const TextStyle(color: AppColors.error),
+                    ),
                   ),
                 ),
               ),
-              actions: [
-                Consumer(
-                  builder: (_, ref, __) {
-                    final count = ref.watch(unreadNotificationsCountProvider);
-                    return Stack(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
-                          ),
-                          onPressed: () => context.go(AppRoutes.notifications),
-                        ),
-                        if (count > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: AppColors.gold,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '$count',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
+              // Alertes
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _AlertsSection(
+                  pendingLeaves: pendingLeaves.value ?? [],
+                  expiringContracts: expiringContracts.value ?? [],
                 ),
-              ],
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Stats Grid (sans les indicateurs financiers)
-                  stats.when(
-                    data: (data) => _StatsGrid(stats: data),
-                    loading: () =>
-                        const SizedBox(height: 200, child: LoadingWidget()),
-                    error: (e, _) => Center(
-                      child: Text(
-                        "Erreur: $e",
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Alertes
-                  _AlertsSection(
-                    pendingLeaves: pendingLeaves.value ?? [],
-                    expiringContracts: expiringContracts.value ?? [],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Répartition par département
-                  const _DeptChart(),
-                  const SizedBox(height: 20),
-
-                  // Anniversaires
-                  birthdays.when(
-                    data: (list) => list.isEmpty
-                        ? const SizedBox()
-                        : _BirthdaysSection(employees: list),
-                    loading: () => const SizedBox(),
-                    error: (e, _) => Center(
-                      child: Text(
-                        "Erreur: $e",
-                        style: const TextStyle(color: AppColors.error),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 80),
-                ]),
               ),
-            ),
-          ],
+              const SizedBox(height: 20),
+              // Répartition par département
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: _DeptChart(),
+              ),
+              const SizedBox(height: 20),
+              // Anniversaires
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: birthdays.when(
+                  data: (list) => list.isEmpty
+                      ? const SizedBox()
+                      : _BirthdaysSection(employees: list),
+                  loading: () => const SizedBox(),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Erreur: $e",
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 80),
+            ],
+          ),
         ),
       ),
     );
@@ -471,98 +388,6 @@ class _AlertTile extends StatelessWidget {
             Icon(Icons.arrow_forward_ios, color: color, size: 14),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _AttendanceChart extends ConsumerWidget {
-  const _AttendanceChart();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SectionHeader(title: 'Présences — 7 derniers jours'),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 180,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barTouchData: BarTouchData(enabled: true),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (v, _) {
-                        final days = [
-                          'Lun',
-                          'Mar',
-                          'Mer',
-                          'Jeu',
-                          'Ven',
-                          'Sam',
-                          'Dim',
-                        ];
-                        return Text(
-                          days[v.toInt() % 7],
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) =>
-                      FlLine(color: Colors.grey.shade100, strokeWidth: 1),
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(7, (i) {
-                  final vals = [85.0, 90.0, 78.0, 92.0, 88.0, 45.0, 20.0];
-                  return BarChartGroupData(
-                    x: i,
-                    barRods: [
-                      BarChartRodData(
-                        toY: vals[i],
-                        color: i < 5 ? AppColors.primary : AppColors.textHint,
-                        width: 20,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(6),
-                        ),
-                      ),
-                    ],
-                  );
-                }),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -820,95 +645,93 @@ class _EmployeeDashboard extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 100,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  'Bonjour, ${user.prenom} 👋',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            // Welcome header
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+              child: Text(
+                'Bonjour, ${user.prenom} 👋',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.4,
-                  children: [
-                    StatCard(
-                      title: 'Mes congés',
-                      value: '${myLeaves.value?.length ?? 0}',
-                      icon: Icons.beach_access_outlined,
-                      color: AppColors.primary,
-                      onTap: () => context.go(AppRoutes.leaves),
-                    ),
-                    StatCard(
-                      title: 'Messages',
-                      value: '—',
-                      icon: Icons.chat_outlined,
-                      color: AppColors.info,
-                      onTap: () => context.go(AppRoutes.messaging),
-                    ),
-                    StatCard(
-                      title: 'Documents',
-                      value: '—',
-                      icon: Icons.folder_outlined,
-                      color: AppColors.accent,
-                      onTap: () => context.go(AppRoutes.documents),
-                    ),
-                    StatCard(
-                      title: 'Agenda',
-                      value: '—',
-                      icon: Icons.calendar_month_outlined,
-                      color: AppColors.success,
-                      onTap: () => context.go(AppRoutes.agenda),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const SectionHeader(title: 'Mes dernières demandes de congé'),
-                const SizedBox(height: 12),
-                myLeaves.when(
-                  data: (list) => list.isEmpty
-                      ? const EmptyState(message: 'Aucune demande de congé')
-                      : Column(
-                          children: list
-                              .take(3)
-                              .map((l) => _LeaveCard(leave: l))
-                              .toList(),
-                        ),
-                  loading: () => const LoadingWidget(),
-                  error: (e, _) => Center(
-                    child: Text(
-                      "Erreur: $e",
-                      style: const TextStyle(color: AppColors.error),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1.4,
+                    children: [
+                      StatCard(
+                        title: 'Mes congés',
+                        value: '${myLeaves.value?.length ?? 0}',
+                        icon: Icons.beach_access_outlined,
+                        color: AppColors.primary,
+                        onTap: () => context.go(AppRoutes.leaves),
+                      ),
+                      StatCard(
+                        title: 'Messages',
+                        value: '—',
+                        icon: Icons.chat_outlined,
+                        color: AppColors.info,
+                        onTap: () => context.go(AppRoutes.messaging),
+                      ),
+                      StatCard(
+                        title: 'Documents',
+                        value: '—',
+                        icon: Icons.folder_outlined,
+                        color: AppColors.accent,
+                        onTap: () => context.go(AppRoutes.documents),
+                      ),
+                      StatCard(
+                        title: 'Agenda',
+                        value: '—',
+                        icon: Icons.calendar_month_outlined,
+                        color: AppColors.success,
+                        onTap: () => context.go(AppRoutes.agenda),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const SectionHeader(title: 'Mes dernières demandes de congé'),
+                  const SizedBox(height: 12),
+                  myLeaves.when(
+                    data: (list) => list.isEmpty
+                        ? const EmptyState(message: 'Aucune demande de congé')
+                        : Column(
+                            children: list
+                                .take(3)
+                                .map((l) => _LeaveCard(leave: l))
+                                .toList(),
+                          ),
+                    loading: () => const LoadingWidget(),
+                    error: (e, _) => Center(
+                      child: Text(
+                        "Erreur: $e",
+                        style: const TextStyle(color: AppColors.error),
+                      ),
                     ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

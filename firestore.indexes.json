@@ -1,131 +1,255 @@
 {
   "indexes": [
     {
-      "collectionGroup": "employees",
+      "collectionGroup": "employee_file_chunks",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "departementId", "order": "ASCENDING" },
-        { "fieldPath": "nom", "order": "ASCENDING" }
+        {
+          "fieldPath": "fileId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "chunkIndex",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "employees",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "statut", "order": "ASCENDING" },
-        { "fieldPath": "nom", "order": "ASCENDING" }
+        {
+          "fieldPath": "departementId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nom",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "employees",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "statut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nom",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "dateStr", "order": "ASCENDING" },
-        { "fieldPath": "heureArrivee", "order": "ASCENDING" }
+        {
+          "fieldPath": "dateStr",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "heureArrivee",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "attendance",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "heureArrivee", "order": "ASCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "heureArrivee",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "leaves",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "leaves",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "statut", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "statut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "payroll",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "mois", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "mois",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "payroll",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "annee", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "annee",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "payroll",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "sanctions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "trainings",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "date", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "evaluations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "annee", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "annee",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "documents",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "employeeId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "notifications",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "userId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "messages",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "conversationId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
+        {
+          "fieldPath": "conversationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
       ]
     },
     {
       "collectionGroup": "conversations",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "participants", "arrayConfig": "CONTAINS" },
-        { "fieldPath": "lastMessageAt", "order": "DESCENDING" }
+        {
+          "fieldPath": "participants",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "lastMessageAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "contracts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "employeeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateDebut",
+          "order": "DESCENDING"
+        }
       ]
     }
   ],

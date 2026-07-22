@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/providers.dart';
+import '../../core/theme/app_theme.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/dashboard/dashboard_screen.dart';
 import '../../screens/employees/employees_screen.dart';
@@ -10,6 +11,7 @@ import '../../screens/employees/employee_form_screen.dart';
 import '../../screens/departments/departments_screen.dart';
 import '../../screens/positions/positions_screen.dart';
 import '../../screens/contracts/contracts_screen.dart';
+import '../../screens/contracts/contract_detail_screen.dart';
 import '../../screens/attendance/attendance_screen.dart';
 import '../../screens/leaves/leaves_screen.dart';
 import '../../screens/absences/absences_screen.dart';
@@ -36,6 +38,26 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: initialLocation,
+    debugLogDiagnostics: true,
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.wifi_off_rounded, color: AppColors.textSecondary, size: 48),
+              const SizedBox(height: 16),
+              Text('Page introuvable', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text('Route: ${state.uri}', style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: () => context.go(AppRoutes.dashboard), child: const Text('Retour au tableau de bord')),
+            ],
+          ),
+        ),
+      ),
+    ),
     redirect: (context, state) {
       final isLoggedIn = authState.value != null;
       final isLoading = authState.isLoading;
@@ -73,6 +95,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: AppRoutes.departments, builder: (_, __) => const DepartmentsScreen()),
           GoRoute(path: AppRoutes.positions, builder: (_, __) => const PositionsScreen()),
+          GoRoute(
+            path: '/contracts/:id',
+            builder: (_, state) => ContractDetailScreen(contractId: state.pathParameters['id']!),
+          ),
           GoRoute(path: AppRoutes.contracts, builder: (_, __) => const ContractsScreen()),
           GoRoute(path: AppRoutes.attendance, builder: (_, __) => const AttendanceScreen()),
           GoRoute(path: AppRoutes.leaves, builder: (_, __) => const LeavesScreen()),

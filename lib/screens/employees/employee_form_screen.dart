@@ -4,7 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import '../../core/theme/app_theme.dart';
@@ -133,7 +134,8 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       final picker = ImagePicker();
       final img = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 800,
+        maxWidth: 300,
+        imageQuality: 70,
       );
       if (img != null) {
         if (kIsWeb) {
@@ -150,60 +152,72 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
   }
 
   Future<void> _pickPdf(String type) async {
-    final result = await FilePicker.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      withData: true,
+    const typeMap = {
+      'contrat': [
+        XTypeGroup(extensions: ['pdf']),
+      ],
+      'demande': [
+        XTypeGroup(extensions: ['pdf']),
+      ],
+      'cv': [
+        XTypeGroup(extensions: ['pdf']),
+      ],
+      'diplome': [
+        XTypeGroup(extensions: ['pdf']),
+      ],
+    };
+    final file = await openFile(
+      acceptedTypeGroups:
+          typeMap[type] ??
+          [
+            XTypeGroup(extensions: ['pdf']),
+          ],
     );
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.single;
+    if (file == null) return;
     final name = file.name;
-    if (kIsWeb && file.bytes != null) {
+    if (kIsWeb) {
+      final bytes = await file.readAsBytes();
       setState(() {
         switch (type) {
           case 'contrat':
-            _contratSigneFile = file.bytes;
+            _contratSigneFile = bytes;
             _contratSigneName = name;
             break;
           case 'demande':
-            _demandeFile = file.bytes;
+            _demandeFile = bytes;
             _demandeName = name;
             break;
           case 'cv':
-            _cvFile = file.bytes;
+            _cvFile = bytes;
             _cvName = name;
             break;
           case 'diplome':
-            _diplomeFile = file.bytes;
-            _diplomeName = name;
-            break;
-        }
-      });
-    } else if (!kIsWeb && file.path != null) {
-      final f = File(file.path!);
-      setState(() {
-        switch (type) {
-          case 'contrat':
-            _contratSigneFile = f;
-            _contratSigneName = name;
-            break;
-          case 'demande':
-            _demandeFile = f;
-            _demandeName = name;
-            break;
-          case 'cv':
-            _cvFile = f;
-            _cvName = name;
-            break;
-          case 'diplome':
-            _diplomeFile = f;
+            _diplomeFile = bytes;
             _diplomeName = name;
             break;
         }
       });
     } else {
-      if (mounted)
-        showSnack(context, 'Fichier invalide ou non lisible', isError: true);
+      setState(() {
+        switch (type) {
+          case 'contrat':
+            _contratSigneFile = File(file.path);
+            _contratSigneName = name;
+            break;
+          case 'demande':
+            _demandeFile = File(file.path);
+            _demandeName = name;
+            break;
+          case 'cv':
+            _cvFile = File(file.path);
+            _cvName = name;
+            break;
+          case 'diplome':
+            _diplomeFile = File(file.path);
+            _diplomeName = name;
+            break;
+        }
+      });
     }
   }
 
@@ -227,20 +241,31 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
     }
   }
 
-  Future<T> _uploadWithRetry<T>(Future<T> Function() uploadFn, int maxRetries, String label) async {
+  Future<T> _uploadWithRetry<T>(
+    Future<T> Function() uploadFn,
+    int maxRetries,
+    String label,
+  ) async {
     var lastError;
     for (var i = 0; i < maxRetries; i++) {
       try {
         return await uploadFn();
       } catch (e) {
         lastError = e;
-        if (mounted) showSnack(context, 'Upload $label: tentative ${i + 1}/$maxRetries échouée ($e)', isError: true);
+        if (mounted)
+          showSnack(
+            context,
+            'Upload $label: tentative ${i + 1}/$maxRetries échouée ($e)',
+            isError: true,
+          );
         if (i < maxRetries - 1) {
           await Future.delayed(Duration(seconds: 2 * (i + 1)));
         }
       }
     }
-    throw Exception('Upload $label échoué après $maxRetries tentatives: $lastError');
+    throw Exception(
+      'Upload $label échoué après $maxRetries tentatives: $lastError',
+    );
   }
 
   Future<void> _save() async {
@@ -263,77 +288,96 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       final matricule =
           _existing?.matricule ?? await service.generateMatricule();
 
-      if (_contratSigneFile == null) {
-        throw Exception('Document obligatoire manquant: Contrat signé');
-      }
-      if (_demandeFile == null) {
-        throw Exception('Document obligatoire manquant: Demande');
-      }
-      if (_cvFile == null) {
-        throw Exception('Document obligatoire manquant: CV');
-      }
-      if (_diplomeFile == null) {
-        throw Exception('Document obligatoire manquant: Diplôme');
-      }
-
       final uploads = <Future<void>>[];
 
       if (_photoFile != null) {
+        // Encode photo directly as base64 data URL (avoids chunk storage issues).
+        // Image is already compressed (300px, 70% quality) so it's well under 1MB.
+        final bytes = _photoFile is Uint8List
+            ? _photoFile as Uint8List
+            : await (_photoFile as File).readAsBytes();
+        final base64Str = base64Encode(bytes);
+        photoUrl = 'data:image/jpeg;base64,$base64Str';
+      }
+
+      if (_contratSigneFile != null) {
         uploads.add(
-          _uploadWithRetry(() async {
-            final fileId = await service.uploadDocument(
-              _photoFile!,
-              '${AppConstants.storageEmployeePhotos}/$matricule.jpg',
-            );
-            photoUrl = await service.getDocumentDataUrl(fileId);
-          }, 2, 'photo'),
+          _uploadWithRetry(
+            () async {
+              final fileId = await service.uploadDocument(
+                _contratSigneFile!,
+                '${AppConstants.storageDocuments}/$matricule/contrat_signe.pdf',
+              );
+              contratSigneFileId = fileId;
+            },
+            3,
+            'contrat signé',
+          ),
         );
       }
 
-      uploads.add(
-        _uploadWithRetry(() async {
-          final fileId = await service.uploadDocument(
-            _contratSigneFile!,
-            '${AppConstants.storageDocuments}/$matricule/contrat_signe.pdf',
-          );
-          contratSigneFileId = fileId;
-        }, 3, 'contrat signé'),
-      );
+      if (_demandeFile != null) {
+        uploads.add(
+          _uploadWithRetry(
+            () async {
+              final fileId = await service.uploadDocument(
+                _demandeFile!,
+                '${AppConstants.storageDocuments}/$matricule/demande.pdf',
+              );
+              demandeFileId = fileId;
+            },
+            3,
+            'demande',
+          ),
+        );
+      }
 
-      uploads.add(
-        _uploadWithRetry(() async {
-          final fileId = await service.uploadDocument(
-            _demandeFile!,
-            '${AppConstants.storageDocuments}/$matricule/demande.pdf',
-          );
-          demandeFileId = fileId;
-        }, 3, 'demande'),
-      );
+      if (_cvFile != null) {
+        uploads.add(
+          _uploadWithRetry(
+            () async {
+              final fileId = await service.uploadDocument(
+                _cvFile!,
+                '${AppConstants.storageDocuments}/$matricule/cv.pdf',
+              );
+              cvFileId = fileId;
+            },
+            3,
+            'CV',
+          ),
+        );
+      }
 
-      uploads.add(
-        _uploadWithRetry(() async {
-          final fileId = await service.uploadDocument(
-            _cvFile!,
-            '${AppConstants.storageDocuments}/$matricule/cv.pdf',
-          );
-          cvFileId = fileId;
-        }, 3, 'CV'),
-      );
-
-      uploads.add(
-        _uploadWithRetry(() async {
-          final fileId = await service.uploadDocument(
-            _diplomeFile!,
-            '${AppConstants.storageDocuments}/$matricule/diplome.pdf',
-          );
-          diplomeFileId = fileId;
-        }, 3, 'diplôme'),
-      );
+      if (_diplomeFile != null) {
+        uploads.add(
+          _uploadWithRetry(
+            () async {
+              final fileId = await service.uploadDocument(
+                _diplomeFile!,
+                '${AppConstants.storageDocuments}/$matricule/diplome.pdf',
+              );
+              diplomeFileId = fileId;
+            },
+            3,
+            'diplôme',
+          ),
+        );
+      }
 
       try {
-        if (mounted) showSnack(context, 'Upload des documents en cours...', isError: false);
+        if (mounted)
+          showSnack(
+            context,
+            'Upload des documents en cours...',
+            isError: false,
+          );
         await Future.wait(uploads).timeout(const Duration(minutes: 5));
-        if (mounted) showSnack(context, 'Uploads terminés, enregistrement...', isError: false);
+        if (mounted)
+          showSnack(
+            context,
+            'Uploads terminés, enregistrement...',
+            isError: false,
+          );
       } on TimeoutException {
         throw TimeoutException('Délai d\'upload dépassé (timeout)');
       }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import '../../core/theme/app_theme.dart';
@@ -107,17 +107,17 @@ class _DocumentFormState extends ConsumerState<_DocumentForm> {
   String? _employeeId;
   String? _employeeNom;
   String _type = 'contrat';
-  PlatformFile? _file;
+  XFile? _file;
   bool _loading = false;
 
   @override
   void dispose() { _nomCtrl.dispose(); super.dispose(); }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.pickFiles();
-    if (result != null) {
+    final file = await openFile(acceptedTypeGroups: const [XTypeGroup(extensions: ['pdf'])]);
+    if (file != null) {
       setState(() {
-        _file = result.files.first;
+        _file = file;
         if (_nomCtrl.text.isEmpty) _nomCtrl.text = _file!.name;
       });
     }
@@ -132,8 +132,9 @@ class _DocumentFormState extends ConsumerState<_DocumentForm> {
     try {
       final service = ref.read(firestoreServiceProvider);
       final user = ref.read(currentUserProvider)!;
+      final bytes = await _file!.readAsBytes();
       final url = await service.uploadDocument(
-        File(_file!.path!),
+        bytes,
         '${AppConstants.storageDocuments}/$_employeeId/${_file!.name}',
       );
       await service.addDocument(DocumentModel(
@@ -143,7 +144,7 @@ class _DocumentFormState extends ConsumerState<_DocumentForm> {
         type: _type,
         nom: _nomCtrl.text.trim(),
         url: url,
-        tailleFichier: _file!.size,
+        tailleFichier: 0,
         createdAt: DateTime.now(),
         createdBy: user.id,
       ));

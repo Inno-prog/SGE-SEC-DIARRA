@@ -7,6 +7,7 @@ import '../core/constants/app_constants.dart';
 import '../models/employee_model.dart';
 import '../models/department_model.dart';
 import '../models/models.dart';
+import '../models/schedule_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -648,6 +649,33 @@ class FirestoreService {
 
   Future<void> deleteAgendaEvent(String id) async {
     await _db.collection(AppConstants.colAgenda).doc(id).delete();
+  }
+
+  // ─── Schedules ────────────────────────────────────────────────────────────────
+  Stream<List<ScheduleModel>> watchSchedules() {
+    return _db
+        .collection(AppConstants.colSchedules)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map(ScheduleModel.fromFirestore).toList());
+  }
+
+  Future<String> addSchedule(ScheduleModel s) async {
+    final ref = await _db
+        .collection(AppConstants.colSchedules)
+        .add(s.toFirestore());
+    return ref.id;
+  }
+
+  Future<void> updateSchedule(ScheduleModel s) async {
+    await _db
+        .collection(AppConstants.colSchedules)
+        .doc(s.id)
+        .update(s.toFirestore());
+  }
+
+  Future<void> deleteSchedule(String id) async {
+    await _db.collection(AppConstants.colSchedules).doc(id).delete();
   }
 
   // ─── Dashboard Stats ─────────────────────────────────────────────────────────

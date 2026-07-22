@@ -45,6 +45,11 @@ class AppConstants {
   static const String contractConsultant = 'Consultant';
   static const String contractPrestataire = 'Prestataire';
 
+  // Contract status
+  static const String contractDraft = 'brouillon';
+  static const String contractValidated = 'valide';
+  static const String contractActiveLegacy = 'actif';
+
   // Leave types
   static const String leaveAnnual = 'Congé annuel';
   static const String leaveSick = 'Congé maladie';

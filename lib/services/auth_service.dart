@@ -10,16 +10,6 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // DEV only: force le bon rôle pour les comptes de test,
-  // peu importe comment ils ont été créés (console, seed, etc.)
-  static const Map<String, String> _devRoleByEmail = {
-    'admin@secdiarra.com': AppConstants.roleAdmin,
-    'rh@secdiarra.com': AppConstants.roleRH,
-    'director@secdiarra.com': AppConstants.roleDirector,
-    'chef@secdiarra.com': AppConstants.roleChefService,
-    'employee@secdiarra.com': AppConstants.roleEmployee,
-  };
-
   Future<UserModel?> signIn(String email, String password) async {
     final cred = await _auth.signInWithEmailAndPassword(
       email: email,
@@ -29,13 +19,12 @@ class AuthService {
     final userRef = _db.collection(AppConstants.colUsers).doc(cred.user!.uid);
     final userDoc = await userRef.get();
     if (!userDoc.exists) {
-      // Create minimal user doc if missing (e.g., created via Firebase Console)
       final defaultPrenom = email.split('@').first.split('.').first;
       await userRef.set({
         'email': email,
         'nom': '',
         'prenom': defaultPrenom,
-        'role': _devRoleByEmail[email] ?? AppConstants.roleEmployee,
+        'role': AppConstants.roleEmployee,
         'employeeId': null,
         'photoUrl': null,
         'isActive': true,
@@ -46,12 +35,6 @@ class AuthService {
       });
     } else {
       await userRef.update({'lastLogin': Timestamp.now()});
-      // Self-heal: ensure le bon rôle pour les comptes de test
-      final expectedRole = _devRoleByEmail[email];
-      final currentRole = (userDoc.data() as Map<String, dynamic>)['role'] as String? ?? '';
-      if (expectedRole != null && expectedRole != currentRole) {
-        await userRef.update({'role': expectedRole});
-      }
     }
     return getUserById(cred.user!.uid);
   }

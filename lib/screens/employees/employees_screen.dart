@@ -37,11 +37,14 @@ class EmployeesScreen extends ConsumerWidget {
                 suffixIcon: search.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear),
-                        onPressed: () => ref.read(employeeSearchProvider.notifier).state = '',
+                        onPressed: () =>
+                            ref.read(employeeSearchProvider.notifier).state =
+                                '',
                       )
                     : null,
               ),
-              onChanged: (v) => ref.read(employeeSearchProvider.notifier).state = v,
+              onChanged: (v) =>
+                  ref.read(employeeSearchProvider.notifier).state = v,
             ),
           ),
           Expanded(
@@ -83,28 +86,64 @@ class _EmployeeTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: EmployeeAvatar(photoUrl: employee.photoUrl, name: employee.fullName, radius: 26),
-        title: Text(employee.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        leading: EmployeeAvatar(
+          photoUrl: employee.photoUrl,
+          name: employee.fullName,
+          radius: 26,
+        ),
+        title: Text(
+          employee.fullName,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${employee.poste} • ${employee.departementNom}', style: const TextStyle(fontSize: 12)),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Text(employee.matricule, style: const TextStyle(fontSize: 11, color: AppColors.textHint)),
-                const SizedBox(width: 8),
-                StatusBadge(status: employee.statut),
-              ],
+            Flexible(
+              child: Text(
+                '${employee.poste} • ${employee.departementNom} • ${employee.matricule}',
+                style: const TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 6),
+            StatusBadge(status: employee.statut),
           ],
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (v) => _handleAction(context, ref, v),
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'view', child: Row(children: [Icon(Icons.visibility_outlined, size: 18), SizedBox(width: 8), Text('Voir')])),
-            const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Modifier')])),
-            const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Supprimer', style: TextStyle(color: AppColors.error))])),
+            const PopupMenuItem(
+              value: 'view',
+              child: Row(
+                children: [
+                  Icon(Icons.visibility_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Voir'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Modifier'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text('Supprimer', style: TextStyle(color: AppColors.error)),
+                ],
+              ),
+            ),
           ],
         ),
         onTap: () => context.go('/employees/${employee.id}'),
@@ -125,7 +164,9 @@ class _EmployeeTile extends ConsumerWidget {
           message: 'Voulez-vous vraiment supprimer ${employee.fullName} ?',
         );
         if (confirm && context.mounted) {
-          await ref.read(firestoreServiceProvider).deleteEmployee(employee.id, employee.departementId);
+          await ref
+              .read(firestoreServiceProvider)
+              .deleteEmployee(employee.id, employee.departementId);
           if (context.mounted) showSnack(context, 'Employé supprimé');
         }
     }

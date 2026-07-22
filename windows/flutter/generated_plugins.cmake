@@ -12,7 +12,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   local_auth_windows
   printing
   share_plus
-  smart_auth
   url_launcher_windows
 )
 

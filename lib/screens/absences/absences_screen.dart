@@ -21,7 +21,10 @@ class AbsencesScreen extends ConsumerWidget {
         data: (list) {
           final absences = list.where((a) => a.statut == 'absent').toList();
           return absences.isEmpty
-              ? const EmptyState(message: 'Aucune absence enregistrée', icon: Icons.event_busy_outlined)
+              ? const EmptyState(
+                  message: 'Aucune absence enregistrée',
+                  icon: Icons.event_busy_outlined,
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: absences.length,
@@ -30,17 +33,37 @@ class AbsencesScreen extends ConsumerWidget {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
-                        leading: EmployeeAvatar(photoUrl: a.employeePhoto, name: a.employeeNom, radius: 22),
-                        title: Text(a.employeeNom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        leading: EmployeeAvatar(
+                          photoUrl: a.employeePhoto,
+                          name: a.employeeNom,
+                          radius: 22,
+                        ),
+                        title: Text(
+                          a.employeeNom,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                         subtitle: Text(DateFormat('dd/MM/yyyy').format(a.date)),
                         trailing: Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             StatusBadge(status: a.statut),
                             if (a.justification != null)
-                              const Text('Justifiée', style: TextStyle(fontSize: 10, color: AppColors.success))
+                              const Text(
+                                'Justifiée',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.success,
+                                ),
+                              )
                             else
-                              const Text('Non justifiée', style: TextStyle(fontSize: 10, color: AppColors.error)),
+                              const Text(
+                                'Non justifiée',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.error,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -69,15 +92,36 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final payroll = ref.watch(payrollProvider(PayrollParams(mois: _mois, annee: _annee, employeeId: null)));
-    final months = ['', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    final payroll = ref.watch(
+      payrollProvider(
+        PayrollParams(mois: _mois, annee: _annee, employeeId: null),
+      ),
+    );
+    final months = [
+      '',
+      'Janvier',
+      'Février',
+      'Mars',
+      'Avril',
+      'Mai',
+      'Juin',
+      'Juillet',
+      'Août',
+      'Septembre',
+      'Octobre',
+      'Novembre',
+      'Décembre',
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Gestion de la paie'),
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: () => _showPayrollForm(context)),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () => _showPayrollForm(context),
+          ),
         ],
       ),
       body: Column(
@@ -90,16 +134,33 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                 IconButton(
                   icon: const Icon(Icons.chevron_left),
                   onPressed: () => setState(() {
-                    if (_mois == 1) { _mois = 12; _annee--; } else { _mois--; }
+                    if (_mois == 1) {
+                      _mois = 12;
+                      _annee--;
+                    } else {
+                      _mois--;
+                    }
                   }),
                 ),
                 Expanded(
-                  child: Text('${months[_mois]} $_annee', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: Text(
+                    '${months[_mois]} $_annee',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
                   onPressed: () => setState(() {
-                    if (_mois == 12) { _mois = 1; _annee++; } else { _mois++; }
+                    if (_mois == 12) {
+                      _mois = 1;
+                      _annee++;
+                    } else {
+                      _mois++;
+                    }
                   }),
                 ),
               ],
@@ -108,22 +169,54 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
           Expanded(
             child: payroll.when(
               data: (list) {
-                if (list.isEmpty) return EmptyState(message: 'Aucune fiche de paie pour ${months[_mois]} $_annee', icon: Icons.payments_outlined, actionLabel: 'Générer', onAction: () => _showPayrollForm(context));
-                final totalNet = list.fold<double>(0, (s, p) => s + p.netAPayer);
+                if (list.isEmpty)
+                  return EmptyState(
+                    message:
+                        'Aucune fiche de paie pour ${months[_mois]} $_annee',
+                    icon: Icons.payments_outlined,
+                    actionLabel: 'Générer',
+                    onAction: () => _showPayrollForm(context),
+                  );
+                final totalNet = list.fold<double>(
+                  0,
+                  (s, p) => s + p.netAPayer,
+                );
                 return Column(
                   children: [
                     Container(
                       margin: const EdgeInsets.all(16),
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(gradient: AppColors.cardGradient, borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.cardGradient,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            const Text('Total masse salariale', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                            Text('${NumberFormat('#,###').format(totalNet)} FCFA', style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                          ]),
-                          Text('${list.length} fiches', style: const TextStyle(color: Colors.white70)),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Total masse salariale',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                '${NumberFormat('#,###').format(totalNet)} FCFA',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            '${list.length} fiches',
+                            style: const TextStyle(color: Colors.white70),
+                          ),
                         ],
                       ),
                     ),
@@ -138,7 +231,12 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                 );
               },
               loading: () => const LoadingWidget(),
-              error: (e, _) => Center(child: Text('Erreur: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  'Erreur: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -150,7 +248,9 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _PayrollForm(mois: _mois, annee: _annee),
     );
   }
@@ -166,13 +266,26 @@ class _PayrollTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: const Icon(Icons.payments_outlined, color: AppColors.primary),
-        title: Text(payroll.employeeNom, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('Brut: ${NumberFormat('#,###').format(payroll.brutTotal)} FCFA'),
+        title: Text(
+          payroll.employeeNom,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          'Brut: ${NumberFormat('#,###').format(payroll.brutTotal)} FCFA',
+        ),
         trailing: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${NumberFormat('#,###').format(payroll.netAPayer)} FCFA', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13)),
+            Text(
+              '${NumberFormat('#,###').format(payroll.netAPayer)} FCFA',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.primary,
+                fontSize: 13,
+              ),
+            ),
             StatusBadge(status: payroll.statut),
           ],
         ),
@@ -193,19 +306,34 @@ class _PayrollTile extends ConsumerWidget {
               _PayRow('Salaire de base', payroll.salaireBase),
               _PayRow('Primes', payroll.primes),
               _PayRow('Bonus', payroll.bonus),
-              _PayRow('Heures supp.', payroll.heuresSupp * payroll.tauxHeureSupp),
+              _PayRow(
+                'Heures supp.',
+                payroll.heuresSupp * payroll.tauxHeureSupp,
+              ),
               const Divider(),
               _PayRow('Brut total', payroll.brutTotal, bold: true),
               const Divider(),
-              _PayRow('Cotisations sociales', -payroll.cotisationsSociales, isDeduction: true),
+              _PayRow(
+                'Cotisations sociales',
+                -payroll.cotisationsSociales,
+                isDeduction: true,
+              ),
               _PayRow('Impôts', -payroll.impots, isDeduction: true),
               _PayRow('Retenues', -payroll.retenues, isDeduction: true),
               const Divider(),
-              _PayRow('NET À PAYER', payroll.netAPayer, bold: true, color: AppColors.primary),
+              _PayRow(
+                'NET À PAYER',
+                payroll.netAPayer,
+                bold: true,
+                color: AppColors.primary,
+              ),
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Fermer'),
+            ),
             ElevatedButton.icon(
               onPressed: () {
                 showSnack(ctx, 'Génération PDF en cours...');
@@ -226,7 +354,13 @@ class _PayRow extends StatelessWidget {
   final bool bold;
   final bool isDeduction;
   final Color? color;
-  const _PayRow(this.label, this.value, {this.bold = false, this.isDeduction = false, this.color});
+  const _PayRow(
+    this.label,
+    this.value, {
+    this.bold = false,
+    this.isDeduction = false,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -236,8 +370,20 @@ class _PayRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal, color: c)),
-          Text('${NumberFormat('#,###').format(value)} FCFA', style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal, color: c)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              color: c,
+            ),
+          ),
+          Text(
+            '${NumberFormat('#,###').format(value)} FCFA',
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              color: c,
+            ),
+          ),
         ],
       ),
     );
@@ -268,13 +414,30 @@ class _PayrollFormState extends ConsumerState<_PayrollForm> {
 
   @override
   void dispose() {
-    for (final c in [_primesCtrl, _bonusCtrl, _heureSuppCtrl, _tauxCtrl, _retenuesCtrl, _cotisCtrl, _impotsCtrl]) c.dispose();
+    for (final c in [
+      _primesCtrl,
+      _bonusCtrl,
+      _heureSuppCtrl,
+      _tauxCtrl,
+      _retenuesCtrl,
+      _cotisCtrl,
+      _impotsCtrl,
+    ])
+      c.dispose();
     super.dispose();
   }
 
   double get _net {
-    final brut = _salaireBase + (double.tryParse(_primesCtrl.text) ?? 0) + (double.tryParse(_bonusCtrl.text) ?? 0) + ((double.tryParse(_heureSuppCtrl.text) ?? 0) * (double.tryParse(_tauxCtrl.text) ?? 0));
-    final deductions = (double.tryParse(_cotisCtrl.text) ?? 0) + (double.tryParse(_impotsCtrl.text) ?? 0) + (double.tryParse(_retenuesCtrl.text) ?? 0);
+    final brut =
+        _salaireBase +
+        (double.tryParse(_primesCtrl.text) ?? 0) +
+        (double.tryParse(_bonusCtrl.text) ?? 0) +
+        ((double.tryParse(_heureSuppCtrl.text) ?? 0) *
+            (double.tryParse(_tauxCtrl.text) ?? 0));
+    final deductions =
+        (double.tryParse(_cotisCtrl.text) ?? 0) +
+        (double.tryParse(_impotsCtrl.text) ?? 0) +
+        (double.tryParse(_retenuesCtrl.text) ?? 0);
     return brut - deductions;
   }
 
@@ -283,25 +446,32 @@ class _PayrollFormState extends ConsumerState<_PayrollForm> {
     setState(() => _loading = true);
     try {
       final user = ref.read(currentUserProvider)!;
-      await ref.read(firestoreServiceProvider).addPayroll(PayrollModel(
-        id: '',
-        employeeId: _employeeId!,
-        employeeNom: _employeeNom!,
-        mois: widget.mois,
-        annee: widget.annee,
-        salaireBase: _salaireBase,
-        primes: double.tryParse(_primesCtrl.text) ?? 0,
-        bonus: double.tryParse(_bonusCtrl.text) ?? 0,
-        heuresSupp: double.tryParse(_heureSuppCtrl.text) ?? 0,
-        tauxHeureSupp: double.tryParse(_tauxCtrl.text) ?? 0,
-        retenues: double.tryParse(_retenuesCtrl.text) ?? 0,
-        cotisationsSociales: double.tryParse(_cotisCtrl.text) ?? 0,
-        impots: double.tryParse(_impotsCtrl.text) ?? 0,
-        netAPayer: _net,
-        createdAt: DateTime.now(),
-        createdBy: user.id,
-      ));
-      if (mounted) { Navigator.pop(context); showSnack(context, 'Fiche de paie créée'); }
+      await ref
+          .read(firestoreServiceProvider)
+          .addPayroll(
+            PayrollModel(
+              id: '',
+              employeeId: _employeeId!,
+              employeeNom: _employeeNom!,
+              mois: widget.mois,
+              annee: widget.annee,
+              salaireBase: _salaireBase,
+              primes: double.tryParse(_primesCtrl.text) ?? 0,
+              bonus: double.tryParse(_bonusCtrl.text) ?? 0,
+              heuresSupp: double.tryParse(_heureSuppCtrl.text) ?? 0,
+              tauxHeureSupp: double.tryParse(_tauxCtrl.text) ?? 0,
+              retenues: double.tryParse(_retenuesCtrl.text) ?? 0,
+              cotisationsSociales: double.tryParse(_cotisCtrl.text) ?? 0,
+              impots: double.tryParse(_impotsCtrl.text) ?? 0,
+              netAPayer: _net,
+              createdAt: DateTime.now(),
+              createdBy: user.id,
+            ),
+          );
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(context, 'Fiche de paie créée');
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -313,68 +483,173 @@ class _PayrollFormState extends ConsumerState<_PayrollForm> {
   Widget build(BuildContext context) {
     final employees = ref.watch(allEmployeesProvider);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 20,
+        right: 20,
+        top: 20,
+      ),
       child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Nouvelle fiche de paie', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Nouvelle fiche de paie',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 20),
             employees.when(
               data: (list) => AppDropdown<String>(
                 label: 'Employé *',
                 value: _employeeId,
-                items: list.map((e) => DropdownMenuItem(value: e.id, child: Text(e.fullName))).toList(),
+                items: list
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(e.fullName),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (v) {
                   final emp = list.firstWhere((e) => e.id == v);
-                  setState(() { _employeeId = v; _employeeNom = emp.fullName; _salaireBase = emp.salaire; });
+                  setState(() {
+                    _employeeId = v;
+                    _employeeNom = emp.fullName;
+                    _salaireBase = emp.salaire;
+                  });
                 },
               ),
               loading: () => const SizedBox(),
-              error: (e, _) => Center(child: Text("Erreur: $e", style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  "Erreur: $e",
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             if (_salaireBase > 0)
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-                child: Text('Salaire de base: ${NumberFormat('#,###').format(_salaireBase)} FCFA', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Salaire de base: ${NumberFormat('#,###').format(_salaireBase)} FCFA',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: AppTextField(label: 'Primes', controller: _primesCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-              const SizedBox(width: 12),
-              Expanded(child: AppTextField(label: 'Bonus', controller: _bonusCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-            ]),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    label: 'Primes',
+                    controller: _primesCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextField(
+                    label: 'Bonus',
+                    controller: _bonusCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: AppTextField(label: 'Heures supp.', controller: _heureSuppCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-              const SizedBox(width: 12),
-              Expanded(child: AppTextField(label: 'Taux/heure', controller: _tauxCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-            ]),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    label: 'Heures supp.',
+                    controller: _heureSuppCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextField(
+                    label: 'Taux/heure',
+                    controller: _tauxCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: AppTextField(label: 'Cotisations', controller: _cotisCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-              const SizedBox(width: 12),
-              Expanded(child: AppTextField(label: 'Impôts', controller: _impotsCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {}))),
-            ]),
+            Row(
+              children: [
+                Expanded(
+                  child: AppTextField(
+                    label: 'Cotisations',
+                    controller: _cotisCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppTextField(
+                    label: 'Impôts',
+                    controller: _impotsCtrl,
+                    keyboardType: TextInputType.number,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
-            AppTextField(label: 'Retenues diverses', controller: _retenuesCtrl, keyboardType: TextInputType.number, onChanged: (_) => setState(() {})),
+            AppTextField(
+              label: 'Retenues diverses',
+              controller: _retenuesCtrl,
+              keyboardType: TextInputType.number,
+              onChanged: (_) => setState(() {}),
+            ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(gradient: AppColors.cardGradient, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                gradient: AppColors.cardGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('NET À PAYER', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  Text('${NumberFormat('#,###').format(_net)} FCFA', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                  const Text(
+                    'NET À PAYER',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${NumberFormat('#,###').format(_net)} FCFA',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _loading ? null : _save, child: const Text('Créer la fiche de paie')),
+            ElevatedButton(
+              onPressed: _loading ? null : _save,
+              child: const Text('Créer la fiche de paie'),
+            ),
             const SizedBox(height: 20),
           ],
         ),

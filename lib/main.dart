@@ -16,12 +16,21 @@ Future<String> _loadLastLocation() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    // Firebase already initialized (e.g., by google-services.json plugin on Android)
+  }
   await initializeDateFormatting('fr_FR', null);
   final initialLocation = await _loadLastLocation();
-  runApp(ProviderScope(overrides: [
-    initialLocationProvider.overrideWith((_) => initialLocation),
-  ], child: const SGEApp()));
+  runApp(
+    ProviderScope(
+      overrides: [initialLocationProvider.overrideWith((_) => initialLocation)],
+      child: const SGEApp(),
+    ),
+  );
 }
 
 class SGEApp extends ConsumerWidget {
@@ -29,7 +38,7 @@ class SGEApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(routerProvider);
+    final router = ref.read(routerProvider);
 
     return _LocationSaver(
       child: MaterialApp.router(

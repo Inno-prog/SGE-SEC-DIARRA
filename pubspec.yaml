@@ -35,7 +35,7 @@ dependencies:
   table_calendar: ^3.1.2
   data_table_2: ^2.5.14
   dropdown_search: ^5.0.6
-  file_picker: ^11.0.2
+  file_selector: ^0.9.0
 
   qr_flutter: ^4.1.0
   mobile_scanner: ^5.2.3
@@ -54,7 +54,7 @@ dependencies:
   connectivity_plus: ^6.0.5
   shared_preferences: ^2.3.2
   encrypt: ^5.0.3
-  pinput: ^3.0.1
+  # pinput removed: not used in app and breaks Android build
   lottie: ^3.1.2
   flutter_animate: ^4.5.0
   timeago: ^3.7.0

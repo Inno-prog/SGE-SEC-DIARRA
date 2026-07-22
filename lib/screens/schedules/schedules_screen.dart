@@ -2,77 +2,81 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../providers/providers.dart';
+import '../../models/schedule_model.dart';
 
-class SchedulesScreen extends ConsumerStatefulWidget {
+class SchedulesScreen extends ConsumerWidget {
   const SchedulesScreen({super.key});
 
   @override
-  ConsumerState<SchedulesScreen> createState() => _SchedulesScreenState();
-}
-
-class _SchedulesScreenState extends ConsumerState<SchedulesScreen> {
-  final List<Map<String, dynamic>> _schedules = [
-    {'nom': 'Horaire standard', 'debut': '08:00', 'fin': '17:00', 'jours': 'Lun-Ven', 'type': 'normal'},
-    {'nom': 'Travail de nuit', 'debut': '22:00', 'fin': '06:00', 'jours': 'Lun-Ven', 'type': 'nuit'},
-    {'nom': 'Week-end', 'debut': '08:00', 'fin': '14:00', 'jours': 'Sam-Dim', 'type': 'weekend'},
-    {'nom': 'Rotation matin', 'debut': '06:00', 'fin': '14:00', 'jours': 'Lun-Ven', 'type': 'rotation'},
-    {'nom': 'Rotation soir', 'debut': '14:00', 'fin': '22:00', 'jours': 'Lun-Ven', 'type': 'rotation'},
-  ];
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final schedules = ref.watch(schedulesProvider);
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Horaires de travail')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(context),
+        onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Nouvel horaire'),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _schedules.length,
-        itemBuilder: (_, i) {
-          final s = _schedules[i];
-          final color = s['type'] == 'nuit'
-              ? AppColors.primaryDark
-              : s['type'] == 'weekend'
-                  ? AppColors.info
-                  : s['type'] == 'rotation'
-                      ? AppColors.warning
-                      : AppColors.primary;
-          return Card(
-            margin: const EdgeInsets.only(bottom: 10),
-            child: ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                child: Icon(Icons.schedule_outlined, color: color),
-              ),
-              title: Text(s['nom'], style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('${s['debut']} → ${s['fin']} • ${s['jours']}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      body: schedules.when(
+        data: (list) {
+          if (list.isEmpty) {
+            return const Center(child: Text('Aucun horaire configuré'));
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: list.length,
+            itemBuilder: (_, i) {
+              final s = list[i];
+              final color = s.type == 'nuit'
+                  ? AppColors.primaryDark
+                  : s.type == 'weekend'
+                      ? AppColors.info
+                      : s.type == 'rotation'
+                          ? AppColors.warning
+                          : AppColors.primary;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                    child: Text(s['type'], style: TextStyle(color: color, fontSize: 11)),
+                    child: Icon(Icons.schedule_outlined, color: color),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                    onPressed: () => setState(() => _schedules.removeAt(i)),
+                  title: Text(s.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text('${s.debut} → ${s.fin} • ${s.jours}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                        child: Text(s.type, style: TextStyle(color: color, fontSize: 11)),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                        onPressed: () => _delete(context, ref, s.id),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
+        loading: () => const LoadingWidget(),
+        error: (e, _) => Center(child: Text('Erreur: $e')),
       ),
     );
   }
 
-  void _showForm(BuildContext context) {
+  Future<void> _delete(BuildContext context, WidgetRef ref, String id) async {
+    await ref.read(firestoreServiceProvider).deleteSchedule(id);
+    showSnack(context, 'Horaire supprimé');
+  }
+
+  void _showForm(BuildContext context, WidgetRef ref) {
     final nomCtrl = TextEditingController();
     final debutCtrl = TextEditingController(text: '08:00');
     final finCtrl = TextEditingController(text: '17:00');
@@ -115,11 +119,22 @@ class _SchedulesScreenState extends ConsumerState<SchedulesScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (nomCtrl.text.isNotEmpty) {
-                    setState(() => _schedules.add({'nom': nomCtrl.text, 'debut': debutCtrl.text, 'fin': finCtrl.text, 'jours': jours, 'type': type}));
-                    Navigator.pop(context);
-                    showSnack(context, 'Horaire ajouté');
+                    final service = ref.read(firestoreServiceProvider);
+                    await service.addSchedule(ScheduleModel(
+                      id: '',
+                      nom: nomCtrl.text,
+                      debut: debutCtrl.text,
+                      fin: finCtrl.text,
+                      jours: jours,
+                      type: type,
+                      createdAt: DateTime.now(),
+                    ));
+                    if (ctx.mounted) {
+                      Navigator.pop(context);
+                      showSnack(context, 'Horaire ajouté');
+                    }
                   }
                 },
                 child: const Text('Enregistrer'),

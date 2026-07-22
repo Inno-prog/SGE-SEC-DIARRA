@@ -3,8 +3,9 @@ import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../models/user_model.dart';
 import '../models/employee_model.dart';
-import '../models/department_model.dart';
 import '../models/models.dart';
+import '../models/department_model.dart';
+import '../models/schedule_model.dart';
 import '../core/constants/app_constants.dart';
 
 // ─── Services ────────────────────────────────────────────────────────────────
@@ -235,6 +236,11 @@ final agendaProvider = StreamProvider<List<AgendaModel>>((ref) {
         from: DateTime(now.year, now.month, 1),
         to: DateTime(now.year, now.month + 2, 0),
       );
+});
+
+// ─── Schedules ────────────────────────────────────────────────────────────────
+final schedulesProvider = StreamProvider<List<ScheduleModel>>((ref) {
+  return ref.watch(firestoreServiceProvider).watchSchedules();
 });
 
 // ─── Audit Logs ──────────────────────────────────────────────────────────────

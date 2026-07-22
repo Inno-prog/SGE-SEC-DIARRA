@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../providers/providers.dart';
-import '../../core/constants/app_constants.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -43,81 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _seedUsers() async {
-    setState(() => _loading = true);
-    try {
-      final auth = FirebaseAuth.instance;
-      final db = FirebaseFirestore.instance;
 
-      final users = [
-        {
-          'email': ' ',
-          'password': 'Admin123!',
-          'nom': 'Admin',
-          'prenom': 'SGE',
-          'role': AppConstants.roleAdmin,
-        },
-        {
-          'email': 'rh@secdiarra.com',
-          'password': 'Rh123!',
-          'nom': 'Dupont',
-          'prenom': 'Marie',
-          'role': AppConstants.roleRH,
-        },
-        {
-          'email': 'director@secdiarra.com',
-          'password': 'Director123!',
-          'nom': 'Martin',
-          'prenom': 'Pierre',
-          'role': AppConstants.roleDirector,
-        },
-        {
-          'email': 'chef@secdiarra.com',
-          'password': 'Chef123!',
-          'nom': 'Bernard',
-          'prenom': 'Sophie',
-          'role': AppConstants.roleChefService,
-        },
-        {
-          'email': 'employee@secdiarra.com',
-          'password': 'Employee123!',
-          'nom': 'Petit',
-          'prenom': 'Jean',
-          'role': AppConstants.roleEmployee,
-        },
-      ];
-
-      for (final u in users) {
-        try {
-          final cred = await auth.createUserWithEmailAndPassword(
-            email: u['email']!,
-            password: u['password']!,
-          );
-          await db.collection(AppConstants.colUsers).doc(cred.user!.uid).set({
-            'email': u['email'],
-            'nom': u['nom'],
-            'prenom': u['prenom'],
-            'role': u['role'],
-            'employeeId': null,
-            'photoUrl': null,
-            'isActive': true,
-            'twoFactorEnabled': false,
-            'createdAt': Timestamp.now(),
-            'lastLogin': null,
-            'permissions': [],
-          });
-          await auth.signOut();
-        } catch (e) {
-          // User might already exist, continue
-        }
-      }
-      if (mounted) showSnack(context, '', isError: false);
-    } catch (e) {
-      if (mounted) showSnack(context, 'Erreur: $e', isError: true);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -251,14 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: _loading ? null : _seedUsers,
-                          child: const Text(
-                            '',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
