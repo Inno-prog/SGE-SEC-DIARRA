@@ -6,13 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'firebase_options.dart';
-import 'core/constants/app_constants.dart';
 import 'providers/providers.dart';
-
-Future<String> _loadLastLocation() async {
-  final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('last_location') ?? AppRoutes.dashboard;
-}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,11 +18,9 @@ Future<void> main() async {
     // Firebase already initialized (e.g., by google-services.json plugin on Android)
   }
   await initializeDateFormatting('fr_FR', null);
-  final initialLocation = await _loadLastLocation();
   runApp(
-    ProviderScope(
-      overrides: [initialLocationProvider.overrideWith((_) => initialLocation)],
-      child: const SGEApp(),
+    const ProviderScope(
+      child: SGEApp(),
     ),
   );
 }
@@ -38,15 +30,20 @@ class SGEApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.read(routerProvider);
+    final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
 
     return _LocationSaver(
-      child: MaterialApp.router(
-        title: 'SGE Secdiarra',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        routerConfig: router,
-        locale: const Locale('fr', 'FR'),
+      child: _ThemeSaver(
+        child: MaterialApp.router(
+          title: 'SGE Secdiarra',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
+          routerConfig: router,
+          locale: const Locale('fr', 'FR'),
+        ),
       ),
     );
   }
@@ -62,6 +59,32 @@ class _LocationSaver extends ConsumerWidget {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('last_location', next);
     });
+    return child;
+  }
+}
+
+class _ThemeSaver extends ConsumerWidget {
+  final Widget child;
+  const _ThemeSaver({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<ThemeMode>(themeModeProvider, (previous, next) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('theme_mode', next.index);
+    });
+
+    Future<void>.microtask(() async {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt('theme_mode');
+      if (saved != null && saved >= 0 && saved <= 2) {
+        final mode = ThemeMode.values[saved];
+        if (mode != ref.read(themeModeProvider)) {
+          ref.read(themeModeProvider.notifier).state = mode;
+        }
+      }
+    });
+
     return child;
   }
 }

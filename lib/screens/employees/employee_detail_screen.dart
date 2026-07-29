@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../utils/document_viewer.dart';
 import '../../models/employee_model.dart';
@@ -41,20 +42,36 @@ class _EmployeeDetailView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final canEdit = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
+
     return DefaultTabController(
       length: 8,
       child: Scaffold(
-        backgroundColor: AppColors.background,
         body: NestedScrollView(
           headerSliverBuilder: (_, __) => [
             SliverAppBar(
               expandedHeight: 200,
               pinned: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new),
+                onPressed: () {
+                  if (GoRouter.of(context).canPop()) {
+                    GoRouter.of(context).pop();
+                  } else {
+                    context.go('/employees');
+                  }
+                },
+              ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => context.go('/employees/${employee.id}/edit'),
-                ),
+                if (canEdit)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => context.go('/employees/${employee.id}/edit'),
+                  ),
               ],
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(

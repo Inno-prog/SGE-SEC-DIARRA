@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "223201246269-vb52qkame4er9v165gv7ekrt8ta37kj2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sge.secdiarra",
+            "certificate_hash": "45128b8caeb81a44bd13ef7e72d27c1b7fa44f82"
+          }
+        },
+        {
           "client_id": "223201246269-ga24r99893f5dnb9t2hr4t2bnrt6cc8i.apps.googleusercontent.com",
           "client_type": 3
         }

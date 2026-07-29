@@ -32,6 +32,8 @@ class AuthService {
         'createdAt': Timestamp.now(),
         'lastLogin': Timestamp.now(),
         'permissions': [],
+        'darkMode': false,
+        'emailNotifications': true,
       });
     } else {
       await userRef.update({'lastLogin': Timestamp.now()});
@@ -67,6 +69,8 @@ class AuthService {
       role: role,
       employeeId: employeeId,
       createdAt: DateTime.now(),
+      darkMode: false,
+      emailNotifications: true,
     );
     await _db.collection(AppConstants.colUsers).doc(user.id).set(user.toFirestore());
     return user;

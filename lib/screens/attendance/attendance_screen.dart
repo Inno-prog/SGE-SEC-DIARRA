@@ -15,11 +15,12 @@ class AttendanceScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedDate = ref.watch(selectedAttendanceDateProvider);
     final attendance = ref.watch(
-      attendanceProvider(AttendanceParams(date: selectedDate, employeeId: null)),
+      attendanceProvider(
+        AttendanceParams(date: selectedDate, employeeId: null),
+      ),
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Présences'),
         actions: [
@@ -431,100 +432,104 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
         right: 20,
         top: 20,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Pointage manuel',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          employees.when(
-            data: (list) => AppDropdown<String>(
-              label: 'Employé *',
-              value: _employeeId,
-              items: list
-                  .map(
-                    (e) =>
-                        DropdownMenuItem(value: e.id, child: Text(e.fullName)),
-                  )
-                  .toList(),
-              onChanged: (v) {
-                final emp = list.firstWhere((e) => e.id == v);
-                setState(() {
-                  _employeeId = v;
-                  _employeeNom = emp.fullName;
-                  _employeePhoto = emp.photoUrl;
-                });
-              },
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Pointage manuel',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            loading: () => const SizedBox(),
-            error: (e, _) => Center(
-              child: Text(
-                "Erreur: $e",
-                style: const TextStyle(color: AppColors.error),
+            const SizedBox(height: 20),
+            employees.when(
+              data: (list) => AppDropdown<String>(
+                label: 'Employé *',
+                value: _employeeId,
+                items: list
+                    .map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(e.fullName),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) {
+                  final emp = list.firstWhere((e) => e.id == v);
+                  setState(() {
+                    _employeeId = v;
+                    _employeeNom = emp.fullName;
+                    _employeePhoto = emp.photoUrl;
+                  });
+                },
               ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          AppDropdown<String>(
-            label: 'Statut',
-            value: _statut,
-            items: [
-              'present',
-              'absent',
-              'retard',
-              'conge',
-            ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-            onChanged: (v) => setState(() => _statut = v!),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Heure d\'arrivée',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    _heureArrivee.format(context),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  onTap: () => _pickTime(true),
+              loading: () => const SizedBox(),
+              error: (e, _) => Center(
+                child: Text(
+                  "Erreur: $e",
+                  style: const TextStyle(color: AppColors.error),
                 ),
               ),
-              Expanded(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text(
-                    'Heure de départ',
-                    style: TextStyle(fontSize: 13),
-                  ),
-                  subtitle: Text(
-                    _heureDepart?.format(context) ?? '—',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+            ),
+            const SizedBox(height: 12),
+            AppDropdown<String>(
+              label: 'Statut',
+              value: _statut,
+              items: [
+                'present',
+                'absent',
+                'retard',
+                'conge',
+              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+              onChanged: (v) => setState(() => _statut = v!),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Heure d\'arrivée',
+                      style: TextStyle(fontSize: 13),
                     ),
+                    subtitle: Text(
+                      _heureArrivee.format(context),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    onTap: () => _pickTime(true),
                   ),
-                  onTap: () => _pickTime(false),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _loading ? null : _save,
-            child: const Text('Enregistrer'),
-          ),
-          const SizedBox(height: 20),
-        ],
+                Expanded(
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Heure de départ',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      _heureDepart?.format(context) ?? '—',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    onTap: () => _pickTime(false),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _loading ? null : _save,
+              child: const Text('Enregistrer'),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

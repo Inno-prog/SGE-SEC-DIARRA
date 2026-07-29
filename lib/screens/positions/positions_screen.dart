@@ -14,7 +14,6 @@ class PositionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final positions = ref.watch(positionsProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Postes')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -147,10 +146,11 @@ class _PositionFormState extends ConsumerState<_PositionForm> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Text(widget.position == null ? 'Nouveau poste' : 'Modifier le poste', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             AppTextField(label: 'Titre *', controller: _titreCtrl, validator: (v) => v!.isEmpty ? 'Requis' : null),
@@ -180,6 +180,7 @@ class _PositionFormState extends ConsumerState<_PositionForm> {
           ],
         ),
       ),
+    ),
     );
   }
 }

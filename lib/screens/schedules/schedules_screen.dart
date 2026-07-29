@@ -12,7 +12,6 @@ class SchedulesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final schedules = ref.watch(schedulesProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Horaires de travail')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -80,15 +79,13 @@ class SchedulesScreen extends ConsumerWidget {
     final nomCtrl = TextEditingController();
     final debutCtrl = TextEditingController(text: '08:00');
     final finCtrl = TextEditingController(text: '17:00');
-    String type = 'normal';
-    String jours = 'Lun-Ven';
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
+      builder: (ctx) => SingleChildScrollView(
+        child: Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -106,16 +103,16 @@ class SchedulesScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               AppDropdown<String>(
                 label: 'Type',
-                value: type,
+                value: 'normal',
                 items: ['normal', 'nuit', 'weekend', 'rotation'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (v) => setModalState(() => type = v!),
+                onChanged: (v) {},
               ),
               const SizedBox(height: 12),
               AppDropdown<String>(
                 label: 'Jours',
-                value: jours,
+                value: 'Lun-Ven',
                 items: ['Lun-Ven', 'Lun-Sam', 'Sam-Dim', 'Tous les jours'].map((j) => DropdownMenuItem(value: j, child: Text(j))).toList(),
-                onChanged: (v) => setModalState(() => jours = v!),
+                onChanged: (v) {},
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -127,8 +124,8 @@ class SchedulesScreen extends ConsumerWidget {
                       nom: nomCtrl.text,
                       debut: debutCtrl.text,
                       fin: finCtrl.text,
-                      jours: jours,
-                      type: type,
+                      jours: 'Lun-Ven',
+                      type: 'normal',
                       createdAt: DateTime.now(),
                     ));
                     if (ctx.mounted) {

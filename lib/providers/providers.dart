@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
@@ -31,8 +32,10 @@ final currentUserProvider = Provider<UserModel?>((ref) {
 final lastLocationProvider = StateProvider<String>((ref) => AppRoutes.dashboard);
 
 final initialLocationProvider = Provider<String>((ref) {
-  return AppRoutes.dashboard;
+  return AppRoutes.login;
 });
+
+final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 final dashboardStatsProvider = FutureProvider<Map<String, int>>((ref) {
@@ -176,6 +179,33 @@ final payrollProvider = StreamProvider.family<List<PayrollModel>, PayrollParams>
         annee: params.annee,
         employeeId: params.employeeId,
       );
+});
+
+// ─── Bonuses ────────────────────────────────────────────────
+class BonusParams {
+  final String? employeeId;
+  final String? statut;
+  const BonusParams({this.employeeId, this.statut});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is BonusParams &&
+          other.employeeId == employeeId &&
+          other.statut == statut;
+
+  @override
+  int get hashCode => employeeId.hashCode ^ statut.hashCode;
+}
+
+final bonusesProvider = StreamProvider.family<List<BonusModel>, BonusParams>((ref, params) {
+  return ref.watch(firestoreServiceProvider).watchBonuses(
+        employeeId: params.employeeId,
+      );
+});
+
+final allBonusesProvider = StreamProvider<List<BonusModel>>((ref) {
+  return ref.watch(firestoreServiceProvider).watchBonuses();
 });
 
 // ─── Sanctions ───────────────────────────────────────────────────────────────

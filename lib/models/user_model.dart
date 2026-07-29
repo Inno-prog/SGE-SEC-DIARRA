@@ -13,6 +13,8 @@ class UserModel {
   final DateTime createdAt;
   final DateTime? lastLogin;
   final List<String> permissions;
+  final bool darkMode;
+  final bool emailNotifications;
 
   UserModel({
     required this.id,
@@ -27,6 +29,8 @@ class UserModel {
     required this.createdAt,
     this.lastLogin,
     this.permissions = const [],
+    this.darkMode = false,
+    this.emailNotifications = true,
   });
 
   String get fullName => '$prenom $nom';
@@ -45,10 +49,12 @@ class UserModel {
       employeeId: data['employeeId'],
       photoUrl: data['photoUrl'],
       isActive: data['isActive'] ?? true,
-      twoFactorEnabled: data['twoFactorEnabled'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastLogin: (data['lastLogin'] as Timestamp?)?.toDate(),
-      permissions: List<String>.from(data['permissions'] ?? []),
+twoFactorEnabled: data['twoFactorEnabled'] ?? false,
+        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        lastLogin: (data['lastLogin'] as Timestamp?)?.toDate(),
+        permissions: List<String>.from(data['permissions'] ?? []),
+        darkMode: data['darkMode'] ?? false,
+        emailNotifications: data['emailNotifications'] ?? true,
     );
   }
 
@@ -64,16 +70,21 @@ class UserModel {
         'createdAt': Timestamp.fromDate(createdAt),
         'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
         'permissions': permissions,
+        'darkMode': darkMode,
+        'emailNotifications': emailNotifications,
       };
 
   UserModel copyWith({
     String? nom,
     String? prenom,
     String? role,
+    String? employeeId,
     String? photoUrl,
     bool? isActive,
     bool? twoFactorEnabled,
     List<String>? permissions,
+    bool? darkMode,
+    bool? emailNotifications,
   }) =>
       UserModel(
         id: id,
@@ -81,12 +92,14 @@ class UserModel {
         nom: nom ?? this.nom,
         prenom: prenom ?? this.prenom,
         role: role ?? this.role,
-        employeeId: employeeId,
+        employeeId: employeeId ?? this.employeeId,
         photoUrl: photoUrl ?? this.photoUrl,
         isActive: isActive ?? this.isActive,
         twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
         createdAt: createdAt,
         lastLogin: lastLogin,
         permissions: permissions ?? this.permissions,
+        darkMode: darkMode ?? this.darkMode,
+        emailNotifications: emailNotifications ?? this.emailNotifications,
       );
 }

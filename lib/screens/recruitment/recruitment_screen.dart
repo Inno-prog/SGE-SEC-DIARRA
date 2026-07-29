@@ -14,7 +14,6 @@ class RecruitmentScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final offers = ref.watch(recruitmentProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Recrutement')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -116,9 +115,10 @@ class _OfferCard extends ConsumerWidget {
                   icon: const Icon(Icons.delete_outline, color: AppColors.error),
                   onPressed: () async {
                     final ok = await showConfirm(context, title: 'Supprimer', message: 'Supprimer cette offre ?');
-                    if (ok && context.mounted) {
-                      await ref.read(firestoreServiceProvider).deleteRecruitment(offer.id);
-                      if (context.mounted) showSnack(context, 'Offre supprimée');
+                    if (ok) {
+                      try {
+                        await ref.read(firestoreServiceProvider).deleteRecruitment(offer.id);
+                      } catch (_) {}
                     }
                   },
                 ),
@@ -131,36 +131,49 @@ class _OfferCard extends ConsumerWidget {
   }
 
   void _changeStatus(BuildContext context, WidgetRef ref) {
+    final messenger = ScaffoldMessenger.of(context);
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Changer le statut'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: ['ouvert', 'ferme', 'pourvu'].map((s) => ListTile(
-            title: Text(s),
-            onTap: () async {
-              Navigator.pop(context);
-              final updated = RecruitmentModel(
-                id: offer.id,
-                poste: offer.poste,
-                departementId: offer.departementId,
-                departementNom: offer.departementNom,
-                description: offer.description,
-                typeContrat: offer.typeContrat,
-                datePublication: offer.datePublication,
-                dateLimite: offer.dateLimite,
-                statut: s,
-                nombreCandidatures: offer.nombreCandidatures,
-                createdBy: offer.createdBy,
-                createdAt: offer.createdAt,
-              );
-              await ref.read(firestoreServiceProvider).updateRecruitment(updated);
-              if (context.mounted) showSnack(context, 'Statut mis à jour');
-            },
-          )).toList(),
-        ),
-      ),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Changer le statut'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: ['ouvert', 'ferme', 'pourvu'].map((s) => ListTile(
+              title: Text(s),
+              onTap: () async {
+                try {
+                  final updated = RecruitmentModel(
+                    id: offer.id,
+                    poste: offer.poste,
+                    departementId: offer.departementId,
+                    departementNom: offer.departementNom,
+                    description: offer.description,
+                    typeContrat: offer.typeContrat,
+                    datePublication: offer.datePublication,
+                    dateLimite: offer.dateLimite,
+                    statut: s,
+                    nombreCandidatures: offer.nombreCandidatures,
+                    createdBy: offer.createdBy,
+                    createdAt: offer.createdAt,
+                  );
+                  await ref.read(firestoreServiceProvider).updateRecruitment(updated);
+                } catch (_) {}
+                if (context.mounted) {
+                  Navigator.of(dialogContext).pop();
+                  messenger.clearSnackBars();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(s == 'ferme' ? 'Offre fermée' : s == 'pourvu' ? 'Offre pourvue' : 'Offre rouverte'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                }
+              },
+            )).toList(),
+          ),
+        );
+      },
     );
   }
 }

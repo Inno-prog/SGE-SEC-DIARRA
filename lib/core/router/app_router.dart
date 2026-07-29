@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../screens/auth/login_screen.dart';
+import '../../core/constants/app_constants.dart';
 import '../../screens/dashboard/dashboard_screen.dart';
 import '../../screens/employees/employees_screen.dart';
 import '../../screens/employees/employee_detail_screen.dart';
@@ -25,12 +27,11 @@ import '../../screens/users/users_screen.dart';
 import '../../screens/notifications/notifications_screen.dart';
 import '../../screens/messaging/messaging_screen.dart';
 import '../../screens/agenda/agenda_screen.dart';
-import '../../screens/reports/reports_screen.dart';
+import '../../screens/reports/reports_screen.dart' hide SettingsScreen, SecurityScreen;
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/security/security_screen.dart';
 import '../../screens/schedules/schedules_screen.dart';
 import '../../screens/bonuses/bonuses_screen.dart';
-import '../constants/app_constants.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -61,17 +62,27 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.value != null;
       final isLoading = authState.isLoading;
-      if (isLoading) return null;
-      if (!isLoggedIn && state.matchedLocation != AppRoutes.login) return AppRoutes.login;
+
+      if (isLoading && state.matchedLocation != AppRoutes.login) {
+        return AppRoutes.login;
+      }
+
+      if (!isLoggedIn && state.matchedLocation != AppRoutes.login) {
+        return AppRoutes.login;
+      }
+
       if (isLoggedIn && state.matchedLocation == AppRoutes.login) {
         final last = ref.read(lastLocationProvider);
         return last != AppRoutes.login ? last : AppRoutes.dashboard;
       }
-      Future.microtask(() {
-        if (state.matchedLocation.startsWith('/')) {
-          ref.read(lastLocationProvider.notifier).state = state.matchedLocation;
-        }
-      });
+
+      if (state.matchedLocation.startsWith('/')) {
+        Future.microtask(() async {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('last_location', state.matchedLocation);
+        });
+      }
+
       return null;
     },
     routes: [
@@ -361,12 +372,12 @@ class _SideNav extends ConsumerWidget {
             .where((g) => g.items.any((i) => [
                   AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
                   AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.documents,
+                  AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)))
             .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
                   AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
                   AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.documents,
+                  AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)).toList()))
             .toList();
 
@@ -376,11 +387,13 @@ class _SideNav extends ConsumerWidget {
                   AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
                   AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
                   AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)))
             .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
                   AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
                   AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
                   AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)).toList()))
             .toList();
 

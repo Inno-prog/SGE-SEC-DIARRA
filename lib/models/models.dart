@@ -296,6 +296,48 @@ class PayrollModel {
         'createdAt': Timestamp.fromDate(createdAt),
         'createdBy': createdBy,
       };
+
+  PayrollModel copyWith({
+    String? id,
+    String? employeeId,
+    String? employeeNom,
+    int? mois,
+    int? annee,
+    double? salaireBase,
+    double? primes,
+    double? bonus,
+    double? heuresSupp,
+    double? tauxHeureSupp,
+    double? retenues,
+    double? cotisationsSociales,
+    double? impots,
+    double? netAPayer,
+    String? statut,
+    DateTime? datePaiement,
+    DateTime? createdAt,
+    String? createdBy,
+  }) {
+    return PayrollModel(
+      id: id ?? this.id,
+      employeeId: employeeId ?? this.employeeId,
+      employeeNom: employeeNom ?? this.employeeNom,
+      mois: mois ?? this.mois,
+      annee: annee ?? this.annee,
+      salaireBase: salaireBase ?? this.salaireBase,
+      primes: primes ?? this.primes,
+      bonus: bonus ?? this.bonus,
+      heuresSupp: heuresSupp ?? this.heuresSupp,
+      tauxHeureSupp: tauxHeureSupp ?? this.tauxHeureSupp,
+      retenues: retenues ?? this.retenues,
+      cotisationsSociales: cotisationsSociales ?? this.cotisationsSociales,
+      impots: impots ?? this.impots,
+      netAPayer: netAPayer ?? this.netAPayer,
+      statut: statut ?? this.statut,
+      datePaiement: datePaiement ?? this.datePaiement,
+      createdAt: createdAt ?? this.createdAt,
+      createdBy: createdBy ?? this.createdBy,
+    );
+  }
 }
 
 class SanctionModel {
@@ -769,5 +811,59 @@ class AuditLogModel {
         'documentId': documentId,
         'description': description,
         'createdAt': Timestamp.fromDate(createdAt),
+      };
+}
+
+class BonusModel {
+  final String id;
+  final String employeeId;
+  final String employeeNom;
+  final String type;
+  final double montant;
+  final String motif;
+  final DateTime dateAttribution;
+  final String statut; // active, payé, annulé
+  final DateTime createdAt;
+  final String createdBy;
+
+  BonusModel({
+    required this.id,
+    required this.employeeId,
+    required this.employeeNom,
+    required this.type,
+    required this.montant,
+    required this.motif,
+    required this.dateAttribution,
+    this.statut = 'active',
+    required this.createdAt,
+    required this.createdBy,
+  });
+
+  factory BonusModel.fromFirestore(DocumentSnapshot doc) {
+    final d = doc.data() as Map<String, dynamic>;
+    return BonusModel(
+      id: doc.id,
+      employeeId: d['employeeId'] ?? '',
+      employeeNom: d['employeeNom'] ?? '',
+      type: d['type'] ?? '',
+      montant: (d['montant'] as num?)?.toDouble() ?? 0,
+      motif: d['motif'] ?? '',
+      dateAttribution: (d['dateAttribution'] as Timestamp).toDate(),
+      statut: d['statut'] ?? 'active',
+      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdBy: d['createdBy'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() => {
+        'employeeId': employeeId,
+        'employeeNom': employeeNom,
+        'type': type,
+        'montant': montant,
+        'motif': motif,
+        'dateAttribution': Timestamp.fromDate(dateAttribution),
+        'statut': statut,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'createdBy': createdBy,
       };
 }

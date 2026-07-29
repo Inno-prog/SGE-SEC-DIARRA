@@ -14,16 +14,21 @@ class EmployeesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final employees = ref.watch(filteredEmployeesProvider);
     final search = ref.watch(employeeSearchProvider);
+    final user = ref.watch(currentUserProvider);
+    final canEdit = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Employés'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => context.go('/employees/add'),
-          ),
+          if (canEdit)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => context.go('/employees/add'),
+            ),
         ],
       ),
       body: Column(
@@ -53,13 +58,13 @@ class EmployeesScreen extends ConsumerWidget {
                   ? EmptyState(
                       message: 'Aucun employé trouvé',
                       icon: Icons.people_outline,
-                      actionLabel: 'Ajouter un employé',
-                      onAction: () => context.go('/employees/add'),
+                      actionLabel: canEdit ? 'Ajouter un employé' : null,
+                      onAction: canEdit ? () => context.go('/employees/add') : null,
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: list.length,
-                      itemBuilder: (_, i) => _EmployeeTile(employee: list[i]),
+                      itemBuilder: (_, i) => _EmployeeTile(employee: list[i], canEdit: canEdit),
                     ),
               loading: () => const LoadingWidget(),
               error: (e, _) => Center(child: Text('Erreur: $e')),
@@ -67,18 +72,21 @@ class EmployeesScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/employees/add'),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Nouvel employé'),
-      ),
+      floatingActionButton: canEdit
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go('/employees/add'),
+              icon: const Icon(Icons.person_add_outlined),
+              label: const Text('Nouvel employé'),
+            )
+          : null,
     );
   }
 }
 
 class _EmployeeTile extends ConsumerWidget {
   final EmployeeModel employee;
-  const _EmployeeTile({required this.employee});
+  final bool canEdit;
+  const _EmployeeTile({required this.employee, required this.canEdit});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -111,41 +119,43 @@ class _EmployeeTile extends ConsumerWidget {
             StatusBadge(status: employee.statut),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (v) => _handleAction(context, ref, v),
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'view',
-              child: Row(
-                children: [
-                  Icon(Icons.visibility_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('Voir'),
+        trailing: canEdit
+            ? PopupMenuButton<String>(
+                onSelected: (v) => _handleAction(context, ref, v),
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'view',
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('Voir'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_outlined, size: 18),
+                        SizedBox(width: 8),
+                        Text('Modifier'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                        SizedBox(width: 8),
+                        Text('Supprimer', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('Modifier'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                  SizedBox(width: 8),
-                  Text('Supprimer', style: TextStyle(color: AppColors.error)),
-                ],
-              ),
-            ),
-          ],
-        ),
+              )
+            : null,
         onTap: () => context.go('/employees/${employee.id}'),
       ),
     );

@@ -452,10 +452,31 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final canEdit = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
+
+    if (!canEdit) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Accès refusé')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Vous n\'avez pas les droits pour modifier les informations des employés.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+          ),
+        ),
+      );
+    }
+
     final depts = ref.watch(departmentsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           widget.employeeId == null ? 'Nouvel employé' : 'Modifier l\'employé',

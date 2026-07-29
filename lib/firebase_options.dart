@@ -31,8 +31,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: '<YOUR_ANDROID_API_KEY>',
-    appId: '<YOUR_ANDROID_APP_ID>',
+    apiKey: 'AIzaSyC-CFwiuRIl4TCQNy-z7JZgyNAYADPyGS8',
+    appId: '1:223201246269:android:58611f4b69ab3f194afe54',
     messagingSenderId: '223201246269',
     projectId: 'sge-sec-diarra',
     storageBucket: 'sge-sec-diarra.firebasestorage.app',

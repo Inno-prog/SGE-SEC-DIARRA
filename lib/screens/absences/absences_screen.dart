@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
-import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
+import '../../models/user_model.dart';
 
 // ─── Absences ────────────────────────────────────────────────────────────────
 class AbsencesScreen extends ConsumerWidget {
@@ -15,7 +18,6 @@ class AbsencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final attendance = ref.watch(attendanceProvider(const AttendanceParams()));
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Absences')),
       body: attendance.when(
         data: (list) {
@@ -114,7 +116,6 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Gestion de la paie'),
         actions: [
@@ -269,29 +270,97 @@ class _PayrollTile extends ConsumerWidget {
         title: Text(
           payroll.employeeNom,
           style: const TextStyle(fontWeight: FontWeight.w600),
+          overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(
-          'Brut: ${NumberFormat('#,###').format(payroll.brutTotal)} FCFA',
-        ),
-        trailing: Column(
+        subtitle: Column(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '${NumberFormat('#,###').format(payroll.netAPayer)} FCFA',
+              'Brut: ${NumberFormat('#,###').format(payroll.brutTotal)} FCFA',
+              style: const TextStyle(fontSize: 12),
+            ),
+            if (payroll.primes > 0 || payroll.bonus > 0)
+              Text(
+                'Primes/Bonus: ${NumberFormat('#,###').format(payroll.primes + payroll.bonus)} FCFA',
+                style: const TextStyle(fontSize: 12, color: AppColors.success),
+              ),
+            Text(
+              'Net: ${NumberFormat('#,###').format(payroll.netAPayer)} FCFA',
               style: const TextStyle(
+                fontSize: 12,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
-                fontSize: 13,
               ),
             ),
-            StatusBadge(status: payroll.statut),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (payroll.statut == 'paye')
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Payé',
+                  style: TextStyle(
+                    color: AppColors.success,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else
+              TextButton(
+                onPressed: () => _changeStatus(
+                  context,
+                  ref,
+                  'paye',
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.success,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 2),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Marquer payé'),
+              ),
           ],
         ),
         onTap: () => _showDetail(context, ref),
       ),
     );
+  }
+
+  Future<void> _changeStatus(
+    BuildContext context,
+    WidgetRef ref,
+    String newStatus,
+  ) async {
+    if (payroll.statut == 'paye' && newStatus == 'brouillon') return;
+    try {
+      final updated = payroll.copyWith(
+        statut: newStatus,
+        datePaiement: newStatus == 'paye' ? DateTime.now() : null,
+      );
+      await ref.read(firestoreServiceProvider).updatePayroll(updated);
+      if (context.mounted) {
+        showSnack(
+          context,
+          'Fiche de paie marquée comme ${newStatus == 'paye' ? 'payée' : 'brouillon'}',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showSnack(context, 'Erreur: $e', isError: true);
+      }
+    }
   }
 
   void _showDetail(BuildContext context, WidgetRef ref) {
@@ -336,7 +405,7 @@ class _PayrollTile extends ConsumerWidget {
             ),
             ElevatedButton.icon(
               onPressed: () {
-                showSnack(ctx, 'Génération PDF en cours...');
+                _generatePayrollPdf(ctx, payroll, ref);
               },
               icon: const Icon(Icons.picture_as_pdf, size: 16),
               label: const Text('PDF'),
@@ -346,6 +415,82 @@ class _PayrollTile extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _generatePayrollPdf(
+    BuildContext context,
+    PayrollModel payroll,
+    WidgetRef ref,
+  ) async {
+    final user = ref.read(currentUserProvider);
+    final pdf = pw.Document();
+    final moisStr = (() {
+      const map = {1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril', 5: 'Mai', 6: 'Juin', 7: 'Juillet', 8: 'Août', 9: 'Septembre', 10: 'Octobre', 11: 'Novembre', 12: 'Décembre'};
+      return map[payroll.mois] ?? '';
+    })();
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Fiche de Paie', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 4),
+              pw.Text('$moisStr ${payroll.annee}', style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700)),
+              pw.SizedBox(height: 16),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text('Employe: ${payroll.employeeNom}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('ID: ${payroll.employeeId}', style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                    pw.SizedBox(height: 4),
+                    pw.Text('Statut: ${payroll.statut}', style: pw.TextStyle(fontSize: 10, color: payroll.statut == 'paye' ? PdfColors.green700 : PdfColors.black)),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              _pdfTable(payroll),
+              pw.SizedBox(height: 16),
+              pw.Text(generatedBy(user), style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500)),
+            ],
+          );
+        },
+      ),
+    );
+    final bytes = await pdf.save();
+    final filename = 'Fiche_Paie_${payroll.employeeNom.replaceAll(' ', '_')}_${moisStr}_${payroll.annee}.pdf';
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => bytes, name: filename);
+    if (context.mounted) showSnack(context, 'PDF genere avec succes');
+  }
+}
+
+pw.Widget _pdfTable(PayrollModel payroll) {
+  return pw.Table(
+    children: [
+      pw.TableRow(children: [pw.Text('Salaire de base', style: pw.TextStyle(fontSize: 10)), pw.Text('${NumberFormat('#,###').format(payroll.salaireBase)} FCFA', style: pw.TextStyle(fontSize: 10))]),
+      pw.TableRow(children: [pw.Text('Primes', style: pw.TextStyle(fontSize: 10)), pw.Text('${NumberFormat('#,###').format(payroll.primes)} FCFA', style: pw.TextStyle(fontSize: 10))]),
+      pw.TableRow(children: [pw.Text('Bonus', style: pw.TextStyle(fontSize: 10)), pw.Text('${NumberFormat('#,###').format(payroll.bonus)} FCFA', style: pw.TextStyle(fontSize: 10))]),
+      pw.TableRow(children: [pw.Text('Heures supp.', style: pw.TextStyle(fontSize: 10)), pw.Text('${NumberFormat('#,###').format(payroll.heuresSupp * payroll.tauxHeureSupp)} FCFA', style: pw.TextStyle(fontSize: 10))]),
+pw.TableRow(children: [pw.Text('---', style: pw.TextStyle(fontSize: 10)), pw.Text('---', style: pw.TextStyle(fontSize: 10))]),
+       pw.TableRow(children: [pw.Text('Brut total', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)), pw.Text('${NumberFormat('#,###').format(payroll.brutTotal)} FCFA', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))]),
+pw.TableRow(children: [pw.Text('---', style: pw.TextStyle(fontSize: 10)), pw.Text('---', style: pw.TextStyle(fontSize: 10))]),
+       pw.TableRow(children: [pw.Text('Cotisations sociales', style: pw.TextStyle(fontSize: 10, color: PdfColors.red)), pw.Text('-${NumberFormat('#,###').format(payroll.cotisationsSociales)} FCFA', style: pw.TextStyle(fontSize: 10, color: PdfColors.red))]),
+       pw.TableRow(children: [pw.Text('Impots', style: pw.TextStyle(fontSize: 10, color: PdfColors.red)), pw.Text('-${NumberFormat('#,###').format(payroll.impots)} FCFA', style: pw.TextStyle(fontSize: 10, color: PdfColors.red))]),
+       pw.TableRow(children: [pw.Text('Retenues', style: pw.TextStyle(fontSize: 10, color: PdfColors.red)), pw.Text('-${NumberFormat('#,###').format(payroll.retenues)} FCFA', style: pw.TextStyle(fontSize: 10, color: PdfColors.red))]),
+       pw.TableRow(children: [pw.Text('---', style: pw.TextStyle(fontSize: 10)), pw.Text('---', style: pw.TextStyle(fontSize: 10))]),
+       pw.TableRow(children: [pw.Text('NET A PAYER', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)), pw.Text('${NumberFormat('#,###').format(payroll.netAPayer)} FCFA', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold))]),
+    ],
+  );
+}
+
+String generatedBy(UserModel? user) {
+  return user != null ? 'Genere par ${user.fullName}' : '';
 }
 
 class _PayRow extends StatelessWidget {
@@ -545,6 +690,9 @@ class _PayrollFormState extends ConsumerState<_PayrollForm> {
                 ),
               ),
             const SizedBox(height: 12),
+            if (_employeeId != null)
+              _BonusRecall(employeeId: _employeeId!),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -654,6 +802,46 @@ class _PayrollFormState extends ConsumerState<_PayrollForm> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BonusRecall extends ConsumerWidget {
+  final String employeeId;
+  const _BonusRecall({required this.employeeId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bonuses = ref.watch(bonusesProvider(BonusParams(employeeId: employeeId)));
+    return bonuses.when(
+      data: (list) {
+        final activeBonuses = list.where((b) => b.statut == 'active').toList();
+        if (activeBonuses.isEmpty) return const SizedBox.shrink();
+        final total = activeBonuses.fold<double>(0, (sum, b) => sum + b.montant);
+        return Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.gold.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.gold.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.star_outline, color: AppColors.gold, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Primes actives: ${NumberFormat('#,###').format(total)} FCFA',
+                style: const TextStyle(
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 }

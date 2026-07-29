@@ -13,7 +13,6 @@ class DepartmentsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final depts = ref.watch(departmentsProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Départements')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -22,7 +21,12 @@ class DepartmentsScreen extends ConsumerWidget {
       ),
       body: depts.when(
         data: (list) => list.isEmpty
-            ? EmptyState(message: 'Aucun département', icon: Icons.business_outlined, actionLabel: 'Ajouter', onAction: () => _showForm(context, ref))
+            ? EmptyState(
+                message: 'Aucun département',
+                icon: Icons.business_outlined,
+                actionLabel: 'Ajouter',
+                onAction: () => _showForm(context, ref),
+              )
             : ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: list.length,
@@ -38,7 +42,9 @@ class DepartmentsScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _DeptForm(dept: dept),
     );
   }
@@ -55,15 +61,28 @@ class _DeptCard extends ConsumerWidget {
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: const Icon(Icons.business_outlined, color: AppColors.primary),
         ),
-        title: Text(dept.nom, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(
+          dept.nom,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (dept.description != null) Text(dept.description!, style: const TextStyle(fontSize: 12)),
-            Text('${dept.nombreEmployes} employé(s)${dept.responsableNom != null ? ' • Resp: ${dept.responsableNom}' : ''}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            if (dept.description != null)
+              Text(dept.description!, style: const TextStyle(fontSize: 12)),
+            Text(
+              '${dept.nombreEmployes} employé(s)${dept.responsableNom != null ? ' • Resp: ${dept.responsableNom}' : ''}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
         trailing: PopupMenuButton<String>(
@@ -72,20 +91,46 @@ class _DeptCard extends ConsumerWidget {
               showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
-                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
                 builder: (_) => _DeptForm(dept: dept),
               );
             } else if (v == 'delete') {
-              final ok = await showConfirm(context, title: 'Supprimer', message: 'Supprimer le département "${dept.nom}" ?');
+              final ok = await showConfirm(
+                context,
+                title: 'Supprimer',
+                message: 'Supprimer le département "${dept.nom}" ?',
+              );
               if (ok && context.mounted) {
-                await ref.read(firestoreServiceProvider).deleteDepartment(dept.id);
+                await ref
+                    .read(firestoreServiceProvider)
+                    .deleteDepartment(dept.id);
                 if (context.mounted) showSnack(context, 'Département supprimé');
               }
             }
           },
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 8), Text('Modifier')])),
-            const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline, size: 18, color: AppColors.error), SizedBox(width: 8), Text('Supprimer', style: TextStyle(color: AppColors.error))])),
+            const PopupMenuItem(
+              value: 'edit',
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Modifier'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                  SizedBox(width: 8),
+                  Text('Supprimer', style: TextStyle(color: AppColors.error)),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -134,13 +179,46 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
       final service = ref.read(firestoreServiceProvider);
       final user = ref.read(currentUserProvider)!;
       if (widget.dept != null) {
-        await service.updateDepartment(widget.dept!.copyWith(nom: _nomCtrl.text.trim(), description: _descCtrl.text.trim(), responsableId: _responsableId, responsableNom: _responsableNom));
-        await service.addAuditLog(userId: user.id, userNom: user.fullName, action: 'modification', collection: AppConstants.colDepartments, documentId: widget.dept!.id, description: 'Modification département ${_nomCtrl.text}');
+        await service.updateDepartment(
+          widget.dept!.copyWith(
+            nom: _nomCtrl.text.trim(),
+            description: _descCtrl.text.trim(),
+            responsableId: _responsableId,
+            responsableNom: _responsableNom,
+          ),
+        );
+        await service.addAuditLog(
+          userId: user.id,
+          userNom: user.fullName,
+          action: 'modification',
+          collection: AppConstants.colDepartments,
+          documentId: widget.dept!.id,
+          description: 'Modification département ${_nomCtrl.text}',
+        );
       } else {
-        final id = await service.addDepartment(DepartmentModel(id: '', nom: _nomCtrl.text.trim(), description: _descCtrl.text.trim(), responsableId: _responsableId, responsableNom: _responsableNom, createdAt: DateTime.now()));
-        await service.addAuditLog(userId: user.id, userNom: user.fullName, action: 'ajout', collection: AppConstants.colDepartments, documentId: id, description: 'Ajout département ${_nomCtrl.text}');
+        final id = await service.addDepartment(
+          DepartmentModel(
+            id: '',
+            nom: _nomCtrl.text.trim(),
+            description: _descCtrl.text.trim(),
+            responsableId: _responsableId,
+            responsableNom: _responsableNom,
+            createdAt: DateTime.now(),
+          ),
+        );
+        await service.addAuditLog(
+          userId: user.id,
+          userNom: user.fullName,
+          action: 'ajout',
+          collection: AppConstants.colDepartments,
+          documentId: id,
+          description: 'Ajout département ${_nomCtrl.text}',
+        );
       }
-      if (mounted) { Navigator.pop(context); showSnack(context, 'Département enregistré'); }
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(context, 'Département enregistré');
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -152,39 +230,89 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
   Widget build(BuildContext context) {
     final employees = ref.watch(allEmployeesProvider);
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 20,
+        right: 20,
+        top: 20,
+      ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(widget.dept == null ? 'Nouveau département' : 'Modifier le département', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            AppTextField(label: 'Nom *', controller: _nomCtrl, validator: (v) => v!.isEmpty ? 'Requis' : null),
-            const SizedBox(height: 12),
-            AppTextField(label: 'Description', controller: _descCtrl, maxLines: 2),
-            const SizedBox(height: 12),
-            employees.when(
-              data: (list) => AppDropdown<String>(
-                label: 'Responsable',
-                value: _responsableId,
-                items: [const DropdownMenuItem(value: null, child: Text('Aucun')), ...list.map((e) => DropdownMenuItem(value: e.id, child: Text(e.fullName)))],
-                onChanged: (v) {
-                  final emp = v != null ? list.firstWhere((e) => e.id == v) : null;
-                  setState(() { _responsableId = v; _responsableNom = emp?.fullName; });
-                },
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.dept == null
+                    ? 'Nouveau département'
+                    : 'Modifier le département',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              loading: () => const SizedBox(),
-              error: (e, _) => Center(child: Text("Erreur: $e", style: const TextStyle(color: AppColors.error))),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _save,
-              child: _loading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Enregistrer'),
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 20),
+              AppTextField(
+                label: 'Nom *',
+                controller: _nomCtrl,
+                validator: (v) => v!.isEmpty ? 'Requis' : null,
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Description',
+                controller: _descCtrl,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              employees.when(
+                data: (list) => AppDropdown<String>(
+                  label: 'Responsable',
+                  value: _responsableId,
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('Aucun')),
+                    ...list.map(
+                      (e) => DropdownMenuItem(
+                        value: e.id,
+                        child: Text(e.fullName),
+                      ),
+                    ),
+                  ],
+                  onChanged: (v) {
+                    final emp = v != null
+                        ? list.firstWhere((e) => e.id == v)
+                        : null;
+                    setState(() {
+                      _responsableId = v;
+                      _responsableNom = emp?.fullName;
+                    });
+                  },
+                ),
+                loading: () => const SizedBox(),
+                error: (e, _) => Center(
+                  child: Text(
+                    "Erreur: $e",
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: _loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Enregistrer'),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

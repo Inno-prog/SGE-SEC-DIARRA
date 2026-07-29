@@ -14,7 +14,8 @@ class LeavesScreen extends ConsumerStatefulWidget {
   ConsumerState<LeavesScreen> createState() => _LeavesScreenState();
 }
 
-class _LeavesScreenState extends ConsumerState<LeavesScreen> with SingleTickerProviderStateMixin {
+class _LeavesScreenState extends ConsumerState<LeavesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabCtrl;
 
   @override
@@ -24,7 +25,10 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen> with SingleTickerPr
   }
 
   @override
-  void dispose() { _tabCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +36,6 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen> with SingleTickerPr
     final isRH = user.role != AppConstants.roleEmployee;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Congés'),
         bottom: TabBar(
@@ -64,7 +67,9 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen> with SingleTickerPr
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => const _LeaveForm(),
     );
   }
@@ -78,11 +83,18 @@ class _LeaveList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider)!;
-    final leaves = ref.watch(leavesProvider(LeaveParams(employeeId: isRH ? null : user.employeeId, statut: statut)));
+    final leaves = ref.watch(
+      leavesProvider(
+        LeaveParams(employeeId: isRH ? null : user.employeeId, statut: statut),
+      ),
+    );
 
     return leaves.when(
       data: (list) => list.isEmpty
-          ? const EmptyState(message: 'Aucune demande', icon: Icons.beach_access_outlined)
+          ? const EmptyState(
+              message: 'Aucune demande',
+              icon: Icons.beach_access_outlined,
+            )
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
@@ -110,14 +122,28 @@ class _LeaveTile extends ConsumerWidget {
           children: [
             Row(
               children: [
-                EmployeeAvatar(photoUrl: leave.employeePhoto, name: leave.employeeNom, radius: 20),
+                EmployeeAvatar(
+                  photoUrl: leave.employeePhoto,
+                  name: leave.employeeNom,
+                  radius: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(leave.employeeNom, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text(leave.type, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
+                      Text(
+                        leave.employeeNom,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        leave.type,
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -127,7 +153,11 @@ class _LeaveTile extends ConsumerWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   '${DateFormat('dd/MM/yyyy').format(leave.dateDebut)} → ${DateFormat('dd/MM/yyyy').format(leave.dateFin)}',
@@ -135,15 +165,34 @@ class _LeaveTile extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Text('${leave.nombreJours}j', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${leave.nombreJours}j',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
             if (leave.motif.isNotEmpty) ...[
               const SizedBox(height: 6),
-              Text(leave.motif, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              Text(
+                leave.motif,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
             ],
             if (isRH && leave.statut == AppConstants.leavePending) ...[
               const SizedBox(height: 12),
@@ -151,19 +200,32 @@ class _LeaveTile extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _updateStatus(context, ref, AppConstants.leaveRejected),
+                      onPressed: () => _updateStatus(
+                        context,
+                        ref,
+                        AppConstants.leaveRejected,
+                      ),
                       icon: const Icon(Icons.close, size: 16),
                       label: const Text('Refuser'),
-                      style: OutlinedButton.styleFrom(foregroundColor: AppColors.error, side: const BorderSide(color: AppColors.error)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _updateStatus(context, ref, AppConstants.leaveApproved),
+                      onPressed: () => _updateStatus(
+                        context,
+                        ref,
+                        AppConstants.leaveApproved,
+                      ),
                       icon: const Icon(Icons.check, size: 16),
                       label: const Text('Approuver'),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                      ),
                     ),
                   ),
                 ],
@@ -175,7 +237,11 @@ class _LeaveTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _updateStatus(BuildContext context, WidgetRef ref, String statut) async {
+  Future<void> _updateStatus(
+    BuildContext context,
+    WidgetRef ref,
+    String statut,
+  ) async {
     final user = ref.read(currentUserProvider)!;
     String? commentaire;
     if (statut == AppConstants.leaveRejected) {
@@ -185,8 +251,16 @@ class _LeaveTile extends ConsumerWidget {
       );
       if (commentaire == null) return;
     }
-    await ref.read(firestoreServiceProvider).updateLeaveStatus(leave.id, statut, user.fullName, commentaire);
-    if (context.mounted) showSnack(context, statut == AppConstants.leaveApproved ? 'Congé approuvé' : 'Congé refusé');
+    await ref
+        .read(firestoreServiceProvider)
+        .updateLeaveStatus(leave.id, statut, user.fullName, commentaire);
+    if (context.mounted)
+      showSnack(
+        context,
+        statut == AppConstants.leaveApproved
+            ? 'Congé approuvé'
+            : 'Congé refusé',
+      );
   }
 }
 
@@ -202,16 +276,29 @@ class _CommentDialogState extends State<_CommentDialog> {
   final _ctrl = TextEditingController();
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      content: TextField(controller: _ctrl, decoration: const InputDecoration(hintText: 'Commentaire...'), maxLines: 3),
+      content: TextField(
+        controller: _ctrl,
+        decoration: const InputDecoration(hintText: 'Commentaire...'),
+        maxLines: 3,
+      ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
-        ElevatedButton(onPressed: () => Navigator.pop(context, _ctrl.text), child: const Text('Confirmer')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(context, _ctrl.text),
+          child: const Text('Confirmer'),
+        ),
       ],
     );
   }
@@ -239,17 +326,48 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider)!;
-    if (user.role == AppConstants.roleEmployee && user.employeeId != null) {
-      _employeeId = user.employeeId;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final emp = ref.read(allEmployeesProvider).value?.firstWhere((e) => e.id == user.employeeId, orElse: () => throw Exception());
-        if (emp != null) setState(() { _employeeNom = emp.fullName; _employeePhoto = emp.photoUrl; });
-      });
+    if (user.role == AppConstants.roleEmployee) {
+      if (user.employeeId != null) {
+        _employeeId = user.employeeId;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            final emp = ref
+                .read(allEmployeesProvider)
+                .value
+                ?.firstWhere((e) => e.id == user.employeeId);
+            if (emp != null && mounted) {
+              setState(() {
+                _employeeNom = emp.fullName;
+                _employeePhoto = emp.photoUrl;
+              });
+            }
+          } catch (_) {}
+        });
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            final emp = ref
+                .read(allEmployeesProvider)
+                .value
+                ?.firstWhere((e) => e.fullName == user.fullName || e.email == user.email);
+            if (emp != null && mounted) {
+              setState(() {
+                _employeeId = emp.id;
+                _employeeNom = emp.fullName;
+                _employeePhoto = emp.photoUrl;
+              });
+            }
+          } catch (_) {}
+        });
+      }
     }
   }
 
   @override
-  void dispose() { _motifCtrl.dispose(); super.dispose(); }
+  void dispose() {
+    _motifCtrl.dispose();
+    super.dispose();
+  }
 
   int get _nombreJours => _dateFin.difference(_dateDebut).inDays + 1;
 
@@ -259,29 +377,44 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
       initialDate: isDebut ? _dateDebut : _dateFin,
       firstDate: DateTime.now(),
       lastDate: DateTime(2100),
-      builder: (_, child) => Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: AppColors.primary)), child: child!),
+      builder: (_, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(primary: AppColors.primary),
+        ),
+        child: child!,
+      ),
     );
-    if (picked != null) setState(() => isDebut ? _dateDebut = picked : _dateFin = picked);
+    if (picked != null)
+      setState(() => isDebut ? _dateDebut = picked : _dateFin = picked);
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate() || _employeeId == null) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (_employeeId == null) {
+      if (mounted) showSnack(context, 'Employé non identifié. Contactez l\'administrateur.', isError: true);
+      return;
+    }
     setState(() => _loading = true);
     try {
       final service = ref.read(firestoreServiceProvider);
-      await service.addLeave(LeaveModel(
-        id: '',
-        employeeId: _employeeId!,
-        employeeNom: _employeeNom!,
-        employeePhoto: _employeePhoto,
-        type: _type,
-        dateDebut: _dateDebut,
-        dateFin: _dateFin,
-        nombreJours: _nombreJours,
-        motif: _motifCtrl.text.trim(),
-        createdAt: DateTime.now(),
-      ));
-      if (mounted) { Navigator.pop(context); showSnack(context, 'Demande de congé soumise'); }
+      await service.addLeave(
+        LeaveModel(
+          id: '',
+          employeeId: _employeeId!,
+          employeeNom: _employeeNom!,
+          employeePhoto: _employeePhoto,
+          type: _type,
+          dateDebut: _dateDebut,
+          dateFin: _dateFin,
+          nombreJours: _nombreJours,
+          motif: _motifCtrl.text.trim(),
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(context, 'Demande de congé soumise');
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -296,69 +429,123 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
     final employees = ref.watch(allEmployeesProvider);
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 20,
+        right: 20,
+        top: 20,
+      ),
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Demande de congé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Demande de congé',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 20),
               if (isRH)
                 employees.when(
                   data: (list) => AppDropdown<String>(
                     label: 'Employé *',
                     value: _employeeId,
-                    items: list.map((e) => DropdownMenuItem(value: e.id, child: Text(e.fullName))).toList(),
+                    items: list
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e.id,
+                            child: Text(e.fullName),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (v) {
                       final emp = list.firstWhere((e) => e.id == v);
-                      setState(() { _employeeId = v; _employeeNom = emp.fullName; _employeePhoto = emp.photoUrl; });
+                      setState(() {
+                        _employeeId = v;
+                        _employeeNom = emp.fullName;
+                        _employeePhoto = emp.photoUrl;
+                      });
                     },
                     validator: (v) => v == null ? 'Requis' : null,
                   ),
                   loading: () => const SizedBox(),
-                  error: (e, _) => Center(child: Text("Erreur: $e", style: const TextStyle(color: AppColors.error))),
+                  error: (e, _) => Center(
+                    child: Text(
+                      "Erreur: $e",
+                      style: const TextStyle(color: AppColors.error),
+                    ),
+                  ),
                 ),
               if (isRH) const SizedBox(height: 12),
               AppDropdown<String>(
                 label: 'Type de congé',
                 value: _type,
-                items: [AppConstants.leaveAnnual, AppConstants.leaveSick, AppConstants.leaveMaternity, AppConstants.leaveExceptional]
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                items:
+                    [
+                          AppConstants.leaveAnnual,
+                          AppConstants.leaveSick,
+                          AppConstants.leaveMaternity,
+                          AppConstants.leaveExceptional,
+                        ]
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
                 onChanged: (v) => setState(() => _type = v!),
               ),
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: AppTextField(
-                    label: 'Date de début',
-                    controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(_dateDebut)),
-                    readOnly: true,
-                    onTap: () => _pickDate(true),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Date de début',
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy').format(_dateDebut),
+                      ),
+                      readOnly: true,
+                      onTap: () => _pickDate(true),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppTextField(
-                    label: 'Date de fin',
-                    controller: TextEditingController(text: DateFormat('dd/MM/yyyy').format(_dateFin)),
-                    readOnly: true,
-                    onTap: () => _pickDate(false),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Date de fin',
+                      controller: TextEditingController(
+                        text: DateFormat('dd/MM/yyyy').format(_dateFin),
+                      ),
+                      readOnly: true,
+                      onTap: () => _pickDate(false),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
-                child: Text('Durée: $_nombreJours jour(s)', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Durée: $_nombreJours jour(s)',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
-              AppTextField(label: 'Motif', controller: _motifCtrl, maxLines: 3, validator: (v) => v!.isEmpty ? 'Requis' : null),
+              AppTextField(
+                label: 'Motif',
+                controller: _motifCtrl,
+                maxLines: 3,
+                validator: (v) => v!.isEmpty ? 'Requis' : null,
+              ),
               const SizedBox(height: 20),
-              ElevatedButton(onPressed: _loading ? null : _save, child: const Text('Soumettre la demande')),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: const Text('Soumettre la demande'),
+              ),
               const SizedBox(height: 20),
             ],
           ),

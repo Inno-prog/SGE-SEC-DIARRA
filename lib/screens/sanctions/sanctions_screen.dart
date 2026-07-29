@@ -15,7 +15,6 @@ class SanctionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sanctions = ref.watch(sanctionsProvider(null));
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Sanctions')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -223,79 +222,84 @@ class _SanctionFormState extends ConsumerState<_SanctionForm> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Nouvelle sanction',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            employees.when(
-              data: (list) => AppDropdown<String>(
-                label: 'Employé *',
-                value: _employeeId,
-                items: list
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e.id,
-                        child: Text(e.fullName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  final emp = list.firstWhere((e) => e.id == v);
-                  setState(() {
-                    _employeeId = v;
-                    _employeeNom = emp.fullName;
-                  });
-                },
-                validator: (v) => v == null ? 'Requis' : null,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Nouvelle sanction',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              loading: () => const SizedBox(),
-              error: (e, _) => Center(
-                child: Text(
-                  "Erreur: $e",
-                  style: const TextStyle(color: AppColors.error),
+              const SizedBox(height: 20),
+              employees.when(
+                data: (list) => AppDropdown<String>(
+                  label: 'Employé *',
+                  value: _employeeId,
+                  items: list
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.id,
+                          child: Text(e.fullName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    final emp = list.firstWhere((e) => e.id == v);
+                    setState(() {
+                      _employeeId = v;
+                      _employeeNom = emp.fullName;
+                    });
+                  },
+                  validator: (v) => v == null ? 'Requis' : null,
+                ),
+                loading: () => const SizedBox(),
+                error: (e, _) => Center(
+                  child: Text(
+                    "Erreur: $e",
+                    style: const TextStyle(color: AppColors.error),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            AppDropdown<String>(
-              label: 'Type de sanction',
-              value: _type,
-              items: [
-                AppConstants.sanctionWarning,
-                AppConstants.sanctionBlame,
-                AppConstants.sanctionSuspension,
-                AppConstants.sanctionLayoff,
-              ].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-              onChanged: (v) => setState(() => _type = v!),
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              label: 'Motif *',
-              controller: _motifCtrl,
-              maxLines: 3,
-              validator: (v) => v!.isEmpty ? 'Requis' : null,
-            ),
-            if (_type == AppConstants.sanctionSuspension ||
-                _type == AppConstants.sanctionLayoff) ...[
+              const SizedBox(height: 12),
+              AppDropdown<String>(
+                label: 'Type de sanction',
+                value: _type,
+                items:
+                    [
+                          AppConstants.sanctionWarning,
+                          AppConstants.sanctionBlame,
+                          AppConstants.sanctionSuspension,
+                          AppConstants.sanctionLayoff,
+                        ]
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                onChanged: (v) => setState(() => _type = v!),
+              ),
               const SizedBox(height: 12),
               AppTextField(
-                label: 'Durée (jours)',
-                controller: _dureeCtrl,
-                keyboardType: TextInputType.number,
+                label: 'Motif *',
+                controller: _motifCtrl,
+                maxLines: 3,
+                validator: (v) => v!.isEmpty ? 'Requis' : null,
               ),
+              if (_type == AppConstants.sanctionSuspension ||
+                  _type == AppConstants.sanctionLayoff) ...[
+                const SizedBox(height: 12),
+                AppTextField(
+                  label: 'Durée (jours)',
+                  controller: _dureeCtrl,
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: const Text('Enregistrer'),
+              ),
+              const SizedBox(height: 20),
             ],
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _save,
-              child: const Text('Enregistrer'),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -310,7 +314,6 @@ class TrainingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trainings = ref.watch(trainingsProvider(null));
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Formations')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -469,102 +472,104 @@ class _TrainingFormState extends ConsumerState<_TrainingForm> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Nouvelle formation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            employees.when(
-              data: (list) => AppDropdown<String>(
-                label: 'Employé *',
-                value: _employeeId,
-                items: list
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e.id,
-                        child: Text(e.fullName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  final emp = list.firstWhere((e) => e.id == v);
-                  setState(() {
-                    _employeeId = v;
-                    _employeeNom = emp.fullName;
-                  });
-                },
-                validator: (v) => v == null ? 'Requis' : null,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Nouvelle formation',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              loading: () => const SizedBox(),
-              error: (e, _) => Center(
-                child: Text(
-                  "Erreur: $e",
-                  style: const TextStyle(color: AppColors.error),
+              const SizedBox(height: 20),
+              employees.when(
+                data: (list) => AppDropdown<String>(
+                  label: 'Employé *',
+                  value: _employeeId,
+                  items: list
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.id,
+                          child: Text(e.fullName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    final emp = list.firstWhere((e) => e.id == v);
+                    setState(() {
+                      _employeeId = v;
+                      _employeeNom = emp.fullName;
+                    });
+                  },
+                  validator: (v) => v == null ? 'Requis' : null,
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              label: 'Intitulé *',
-              controller: _intituleCtrl,
-              validator: (v) => v!.isEmpty ? 'Requis' : null,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    label: 'Organisme *',
-                    controller: _organismeCtrl,
-                    validator: (v) => v!.isEmpty ? 'Requis' : null,
+                loading: () => const SizedBox(),
+                error: (e, _) => Center(
+                  child: Text(
+                    "Erreur: $e",
+                    style: const TextStyle(color: AppColors.error),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppTextField(
-                    label: 'Durée (jours)',
-                    controller: _dureeCtrl,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              label: 'Date',
-              controller: TextEditingController(
-                text: DateFormat('dd/MM/yyyy').format(_date),
               ),
-              readOnly: true,
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _date,
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                  builder: (_, child) => Theme(
-                    data: Theme.of(context).copyWith(
-                      colorScheme: const ColorScheme.light(
-                        primary: AppColors.primary,
-                      ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Intitulé *',
+                controller: _intituleCtrl,
+                validator: (v) => v!.isEmpty ? 'Requis' : null,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Organisme *',
+                      controller: _organismeCtrl,
+                      validator: (v) => v!.isEmpty ? 'Requis' : null,
                     ),
-                    child: child!,
                   ),
-                );
-                if (picked != null) setState(() => _date = picked);
-              },
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _save,
-              child: const Text('Enregistrer'),
-            ),
-            const SizedBox(height: 20),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Durée (jours)',
+                      controller: _dureeCtrl,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Date',
+                controller: TextEditingController(
+                  text: DateFormat('dd/MM/yyyy').format(_date),
+                ),
+                readOnly: true,
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _date,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    builder: (_, child) => Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.light(
+                          primary: AppColors.primary,
+                        ),
+                      ),
+                      child: child!,
+                    ),
+                  );
+                  if (picked != null) setState(() => _date = picked);
+                },
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: const Text('Enregistrer'),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -579,7 +584,6 @@ class EvaluationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final evals = ref.watch(evaluationsProvider(null));
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Évaluations')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -755,82 +759,84 @@ class _EvaluationFormState extends ConsumerState<_EvaluationForm> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Nouvelle évaluation',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            employees.when(
-              data: (list) => AppDropdown<String>(
-                label: 'Employé *',
-                value: _employeeId,
-                items: list
-                    .map(
-                      (e) => DropdownMenuItem(
-                        value: e.id,
-                        child: Text(e.fullName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  final emp = list.firstWhere((e) => e.id == v);
-                  setState(() {
-                    _employeeId = v;
-                    _employeeNom = emp.fullName;
-                  });
-                },
-                validator: (v) => v == null ? 'Requis' : null,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Nouvelle évaluation',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              loading: () => const SizedBox(),
-              error: (e, _) => Center(
-                child: Text(
-                  "Erreur: $e",
-                  style: const TextStyle(color: AppColors.error),
+              const SizedBox(height: 20),
+              employees.when(
+                data: (list) => AppDropdown<String>(
+                  label: 'Employé *',
+                  value: _employeeId,
+                  items: list
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e.id,
+                          child: Text(e.fullName),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    final emp = list.firstWhere((e) => e.id == v);
+                    setState(() {
+                      _employeeId = v;
+                      _employeeNom = emp.fullName;
+                    });
+                  },
+                  validator: (v) => v == null ? 'Requis' : null,
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Text(
-                  'Note: ',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  '${_note.toStringAsFixed(1)}/20',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+                loading: () => const SizedBox(),
+                error: (e, _) => Center(
+                  child: Text(
+                    "Erreur: $e",
+                    style: const TextStyle(color: AppColors.error),
                   ),
                 ),
-              ],
-            ),
-            Slider(
-              value: _note,
-              min: 0,
-              max: 20,
-              divisions: 40,
-              activeColor: AppColors.primary,
-              onChanged: (v) => setState(() => _note = v),
-            ),
-            const SizedBox(height: 12),
-            AppTextField(
-              label: 'Commentaire',
-              controller: _commentCtrl,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _save,
-              child: const Text('Enregistrer'),
-            ),
-            const SizedBox(height: 20),
-          ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Text(
+                    'Note: ',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    '${_note.toStringAsFixed(1)}/20',
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              Slider(
+                value: _note,
+                min: 0,
+                max: 20,
+                divisions: 40,
+                activeColor: AppColors.primary,
+                onChanged: (v) => setState(() => _note = v),
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Commentaire',
+                controller: _commentCtrl,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: const Text('Enregistrer'),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );

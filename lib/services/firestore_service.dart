@@ -102,7 +102,9 @@ class FirestoreService {
         .orderBy('matricule', descending: true)
         .limit(1)
         .get();
-    final last = snap.docs.isNotEmpty ? snap.docs.first.get('matricule') as String? : null;
+    final last = snap.docs.isNotEmpty
+        ? snap.docs.first.get('matricule') as String?
+        : null;
     if (last == null || last.isEmpty) return 'EMP0001';
     final num = int.tryParse(last.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     return 'EMP${(num + 1).toString().padLeft(4, '0')}';
@@ -324,6 +326,34 @@ class FirestoreService {
     await _db.collection(AppConstants.colPayroll).doc(id).delete();
   }
 
+  // ─── Bonuses ──────────────────────────────────────────────────────────
+  Stream<List<BonusModel>> watchBonuses({String? employeeId}) {
+    Query q = _db.collection(AppConstants.colBonuses);
+    if (employeeId != null) q = q.where('employeeId', isEqualTo: employeeId);
+    return q
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map(BonusModel.fromFirestore).toList());
+  }
+
+  Future<String> addBonus(BonusModel b) async {
+    final ref = await _db
+        .collection(AppConstants.colBonuses)
+        .add(b.toFirestore());
+    return ref.id;
+  }
+
+  Future<void> updateBonus(BonusModel b) async {
+    await _db
+        .collection(AppConstants.colBonuses)
+        .doc(b.id)
+        .update(b.toFirestore());
+  }
+
+  Future<void> deleteBonus(String id) async {
+    await _db.collection(AppConstants.colBonuses).doc(id).delete();
+  }
+
   // ─── Sanctions ───────────────────────────────────────────────────────────────
   Stream<List<SanctionModel>> watchSanctions({String? employeeId}) {
     Query q = _db.collection(AppConstants.colSanctions);
@@ -423,7 +453,8 @@ class FirestoreService {
       Uint8List web when kIsWeb => web,
       File f when !kIsWeb => await f.readAsBytes(),
       _ => throw UnsupportedError(
-          'Type de fichier non supporté. kIsWeb=$kIsWeb, type=${file.runtimeType}'),
+        'Type de fichier non supporté. kIsWeb=$kIsWeb, type=${file.runtimeType}',
+      ),
     };
 
     if (bytes.isEmpty) throw Exception('Fichier vide');
@@ -434,7 +465,9 @@ class FirestoreService {
       final end = i + chunkSize > bytes.length ? bytes.length : i + chunkSize;
       chunks.add(bytes.sublist(i, end));
     }
-    final fileId = path.replaceAll('/', '_').replaceAll(RegExp(r'[^A-Za-z0-9_\-]'), '_');
+    final fileId = path
+        .replaceAll('/', '_')
+        .replaceAll(RegExp(r'[^A-Za-z0-9_\-]'), '_');
     final batch = _db.batch();
     for (var i = 0; i < chunks.length; i++) {
       final chunkBase64 = base64Encode(chunks[i]);
@@ -460,10 +493,15 @@ class FirestoreService {
         .orderBy('chunkIndex')
         .get();
     if (snap.docs.isEmpty) throw Exception('Fichier introuvable');
-    final totalChunks = snap.docs.first.get('totalChunks') as int? ?? snap.docs.length;
+    final totalChunks =
+        snap.docs.first.get('totalChunks') as int? ?? snap.docs.length;
     if (snap.docs.length != totalChunks) throw Exception('Fichier incomplet');
-    final mimeType = snap.docs.first.get('mimeType') as String? ?? 'application/octet-stream';
-    final builder = StringBuffer(mimeType.length + 13 + (snap.docs.length * 400 * 1024 * 4 ~/ 3));
+    final mimeType =
+        snap.docs.first.get('mimeType') as String? ??
+        'application/octet-stream';
+    final builder = StringBuffer(
+      mimeType.length + 13 + (snap.docs.length * 400 * 1024 * 4 ~/ 3),
+    );
     builder.write('data:$mimeType;base64,');
     for (final doc in snap.docs) {
       final chunk = doc.get('data') as String;
@@ -479,7 +517,8 @@ class FirestoreService {
         .orderBy('chunkIndex')
         .get();
     if (snap.docs.isEmpty) throw Exception('Fichier introuvable');
-    final totalChunks = snap.docs.first.get('totalChunks') as int? ?? snap.docs.length;
+    final totalChunks =
+        snap.docs.first.get('totalChunks') as int? ?? snap.docs.length;
     if (snap.docs.length != totalChunks) throw Exception('Fichier incomplet');
     final chunks = <int>[];
     for (final doc in snap.docs) {
@@ -730,5 +769,39 @@ class FirestoreService {
         .map(EmployeeModel.fromFirestore)
         .where((e) => e.dateNaissance.month == month)
         .toList();
+  }
+
+  Future<List<AttendanceModel>> getAllAttendance() async {
+    final snap = await _db.collection(AppConstants.colAttendance).get();
+    return snap.docs.map(AttendanceModel.fromFirestore).toList()..sort((a, b) {
+      final da = a.heureArrivee ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final db = b.heureArrivee ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return da.compareTo(db);
+    });
+  }
+
+  Future<List<PayrollModel>> getAllPayroll() async {
+    final snap = await _db.collection(AppConstants.colPayroll).get();
+    return snap.docs.map(PayrollModel.fromFirestore).toList();
+  }
+
+  Future<List<LeaveModel>> getAllLeaves() async {
+    final snap = await _db.collection(AppConstants.colLeaves).get();
+    return snap.docs.map(LeaveModel.fromFirestore).toList();
+  }
+
+  Future<List<EmployeeModel>> getAllEmployees() async {
+    final snap = await _db.collection(AppConstants.colEmployees).get();
+    return snap.docs.map(EmployeeModel.fromFirestore).toList();
+  }
+
+  Future<List<SanctionModel>> getAllSanctions() async {
+    final snap = await _db.collection(AppConstants.colSanctions).get();
+    return snap.docs.map(SanctionModel.fromFirestore).toList();
+  }
+
+  Future<List<TrainingModel>> getAllTrainings() async {
+    final snap = await _db.collection(AppConstants.colTrainings).get();
+    return snap.docs.map(TrainingModel.fromFirestore).toList();
   }
 }

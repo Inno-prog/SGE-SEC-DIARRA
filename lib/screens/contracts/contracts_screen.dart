@@ -15,7 +15,6 @@ class ContractsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final contracts = ref.watch(contractsProvider(null));
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Contrats')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),

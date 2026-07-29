@@ -35,7 +35,6 @@ class _AdminDashboard extends ConsumerWidget {
     final expiringContracts = ref.watch(expiringContractsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
         child: SingleChildScrollView(
@@ -139,7 +138,6 @@ class _RHDashboard extends ConsumerWidget {
     final expiringContracts = ref.watch(expiringContractsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
         child: SingleChildScrollView(
@@ -574,7 +572,6 @@ class _ChefServiceDashboard extends ConsumerWidget {
     final pendingLeaves = ref.watch(pendingLeavesProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('Bonjour, ${user.prenom}'),
         actions: [
@@ -584,48 +581,50 @@ class _ChefServiceDashboard extends ConsumerWidget {
           ),
         ],
       ),
-      body: ListView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        children: [
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.4,
-            children: [
-              StatCard(
-                title: 'Mon équipe',
-                value: '—',
-                icon: Icons.people_outline,
-                color: AppColors.primary,
-                onTap: () => context.go(AppRoutes.employees),
-              ),
-              StatCard(
-                title: 'Congés en attente',
-                value: '${pendingLeaves.value?.length ?? 0}',
-                icon: Icons.pending_outlined,
-                color: AppColors.warning,
-                onTap: () => context.go(AppRoutes.leaves),
-              ),
-              StatCard(
-                title: 'Présences',
-                value: '—',
-                icon: Icons.fingerprint,
-                color: AppColors.success,
-                onTap: () => context.go(AppRoutes.attendance),
-              ),
-              StatCard(
-                title: 'Agenda',
-                value: '—',
-                icon: Icons.calendar_month_outlined,
-                color: AppColors.info,
-                onTap: () => context.go(AppRoutes.agenda),
-              ),
-            ],
-          ),
-        ],
+        child: Column(
+          children: [
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.4,
+              children: [
+                StatCard(
+                  title: 'Mon équipe',
+                  value: '—',
+                  icon: Icons.people_outline,
+                  color: AppColors.primary,
+                  onTap: () => context.go(AppRoutes.employees),
+                ),
+                StatCard(
+                  title: 'Congés en attente',
+                  value: '${pendingLeaves.value?.length ?? 0}',
+                  icon: Icons.pending_outlined,
+                  color: AppColors.warning,
+                  onTap: () => context.go(AppRoutes.leaves),
+                ),
+                StatCard(
+                  title: 'Présences',
+                  value: '—',
+                  icon: Icons.fingerprint,
+                  color: AppColors.success,
+                  onTap: () => context.go(AppRoutes.attendance),
+                ),
+                StatCard(
+                  title: 'Agenda',
+                  value: '—',
+                  icon: Icons.calendar_month_outlined,
+                  color: AppColors.info,
+                  onTap: () => context.go(AppRoutes.agenda),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -644,7 +643,6 @@ class _EmployeeDashboard extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(

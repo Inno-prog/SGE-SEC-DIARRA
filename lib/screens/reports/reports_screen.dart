@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/user_model.dart';
+import '../../models/models.dart';
+import '../../models/employee_model.dart';
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
 class ReportsScreen extends ConsumerWidget {
@@ -23,7 +28,6 @@ class ReportsScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Rapports')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -78,8 +82,9 @@ class ReportsScreen extends ConsumerWidget {
                         Icons.picture_as_pdf,
                         color: AppColors.error,
                       ),
-                      onPressed: () =>
-                          showSnack(context, 'Génération PDF en cours...'),
+                      onPressed: () {
+                        _generateReportPdf(context, r.$1, ref);
+                      },
                       tooltip: 'PDF',
                     ),
                     IconButton(
@@ -185,6 +190,781 @@ class ReportsScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _generateReportPdf(
+    BuildContext context,
+    String reportName,
+    WidgetRef ref,
+  ) async {
+    final user = ref.read(currentUserProvider);
+    final service = ref.read(firestoreServiceProvider);
+    final pdf = pw.Document();
+    final now = DateTime.now();
+    final period = DateFormat('MM/yyyy').format(now);
+
+    List<dynamic> data = [];
+    String subtitle = '';
+
+    switch (reportName) {
+      case 'Rapport des présences':
+        data = await service.getAllAttendance();
+        subtitle = 'Total pointages: ${data.length}';
+        break;
+      case 'Rapport des salaires':
+        data = await service.getAllPayroll();
+        subtitle = 'Total fiches: ${data.length}';
+        break;
+      case 'Rapport des congés':
+        data = await service.getAllLeaves();
+        subtitle = 'Total demandes: ${data.length}';
+        break;
+      case 'Rapport des employés':
+        data = await service.getAllEmployees();
+        subtitle = 'Total employés: ${data.length}';
+        break;
+      case 'Rapport des sanctions':
+        data = await service.getAllSanctions();
+        subtitle = 'Total sanctions: ${data.length}';
+        break;
+      case 'Rapport des formations':
+        data = await service.getAllTrainings();
+        subtitle = 'Total formations: ${data.length}';
+        break;
+    }
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                reportName,
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 4),
+              pw.Text(
+                'Généré le ${DateFormat('dd/MM/yyyy').format(now)}',
+                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Container(
+                padding: pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400),
+                  borderRadius: pw.BorderRadius.circular(8),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Rapport: $reportName',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'Période: $period',
+                      style: pw.TextStyle(fontSize: 10),
+                    ),
+                    pw.SizedBox(height: 4),
+                    pw.Text(subtitle, style: pw.TextStyle(fontSize: 10)),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      generatedBy(user),
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        color: PdfColors.grey500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+              pw.Text(
+                'Détails',
+                style: pw.TextStyle(
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              if (data.isEmpty)
+                pw.Text(
+                  'Aucune donnée disponible',
+                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+                )
+              else
+                ..._buildReportTables(reportName, data),
+            ],
+          );
+        },
+      ),
+    );
+    final bytes = await pdf.save();
+    final filename =
+        '${reportName.replaceAll(' ', '_')}_${DateFormat('yyyyMM').format(now)}.pdf';
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => bytes,
+      name: filename,
+    );
+    if (context.mounted) showSnack(context, 'PDF généré avec succès');
+  }
+
+  List<pw.Widget> _buildReportTables(String reportName, List<dynamic> data) {
+    switch (reportName) {
+      case 'Rapport des présences':
+        return _buildAttendanceTable(data.cast<AttendanceModel>());
+      case 'Rapport des salaires':
+        return _buildPayrollTable(data.cast<PayrollModel>());
+      case 'Rapport des congés':
+        return _buildLeaveTable(data.cast<LeaveModel>());
+      case 'Rapport des employés':
+        return _buildEmployeeTable(data.cast<EmployeeModel>());
+      case 'Rapport des sanctions':
+        return _buildSanctionTable(data.cast<SanctionModel>());
+      case 'Rapport des formations':
+        return _buildTrainingTable(data.cast<TrainingModel>());
+      default:
+        return [pw.Text('Type de rapport non supporté')];
+    }
+  }
+
+  List<pw.Widget> _buildAttendanceTable(List<AttendanceModel> items) {
+    final headers = [
+      'Employé',
+      'Date',
+      'Arrivée',
+      'Départ',
+      'Statut',
+      'Méthode',
+      'Retard (min)',
+      'Justification',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(1.2),
+          2: pw.FlexColumnWidth(1),
+          3: pw.FlexColumnWidth(1),
+          4: pw.FlexColumnWidth(1),
+          5: pw.FlexColumnWidth(1),
+          6: pw.FlexColumnWidth(1),
+          7: pw.FlexColumnWidth(2),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final a in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    a.employeeNom,
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(a.date),
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    a.heureArrivee != null
+                        ? DateFormat('HH:mm').format(a.heureArrivee!)
+                        : '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    a.heureDepart != null
+                        ? DateFormat('HH:mm').format(a.heureDepart!)
+                        : '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(a.statut, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(a.methode, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${a.retardMinutes}',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    a.justification ?? '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<pw.Widget> _buildPayrollTable(List<PayrollModel> items) {
+    final headers = [
+      'Employé',
+      'Mois',
+      'Année',
+      'Base',
+      'Primes',
+      'Bonus',
+      'H.Supp',
+      'Brut',
+      'Retenues',
+      'Cot.',
+      'Impôts',
+      'Net',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(0.8),
+          2: pw.FlexColumnWidth(0.8),
+          3: pw.FlexColumnWidth(1),
+          4: pw.FlexColumnWidth(1),
+          5: pw.FlexColumnWidth(1),
+          6: pw.FlexColumnWidth(1),
+          7: pw.FlexColumnWidth(1),
+          8: pw.FlexColumnWidth(1),
+          9: pw.FlexColumnWidth(1),
+          10: pw.FlexColumnWidth(1),
+          11: pw.FlexColumnWidth(1.2),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final p in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    p.employeeNom,
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text('${p.mois}', style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${p.annee}',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.salaireBase)}',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.primes)}',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.bonus)}',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.heuresSupp * p.tauxHeureSupp)}',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.brutTotal)}',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.retenues)}',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.red),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.cotisationsSociales)}',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.red),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.impots)}',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.red),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${NumberFormat('#,###').format(p.netAPayer)}',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<pw.Widget> _buildLeaveTable(List<LeaveModel> items) {
+    final headers = [
+      'Employé',
+      'Type',
+      'Du',
+      'Au',
+      'Jours',
+      'Motif',
+      'Statut',
+      'Validé par',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(1.5),
+          2: pw.FlexColumnWidth(1),
+          3: pw.FlexColumnWidth(1),
+          4: pw.FlexColumnWidth(0.8),
+          5: pw.FlexColumnWidth(2),
+          6: pw.FlexColumnWidth(1),
+          7: pw.FlexColumnWidth(1.5),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final l in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    l.employeeNom,
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(l.type, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(l.dateDebut),
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(l.dateFin),
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${l.nombreJours}',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(l.motif, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(l.statut, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    l.validePar ?? '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<pw.Widget> _buildEmployeeTable(List<EmployeeModel> items) {
+    final headers = [
+      'Matricule',
+      'Nom complet',
+      'Département',
+      'Poste',
+      'Grade',
+      'Contrat',
+      'Date embauche',
+      'Statut',
+      'Solde congé',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(1),
+          1: pw.FlexColumnWidth(1.5),
+          2: pw.FlexColumnWidth(1.2),
+          3: pw.FlexColumnWidth(1.2),
+          4: pw.FlexColumnWidth(1),
+          5: pw.FlexColumnWidth(1),
+          6: pw.FlexColumnWidth(1),
+          7: pw.FlexColumnWidth(1),
+          8: pw.FlexColumnWidth(1),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final e in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(e.matricule, style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(e.fullName, style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    e.departementNom,
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(e.poste, style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(e.grade, style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    e.typeContrat,
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(e.dateEmbauche),
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(e.statut, style: pw.TextStyle(fontSize: 8)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${e.soldeCongesAnnuels}j',
+                    style: pw.TextStyle(fontSize: 8),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<pw.Widget> _buildSanctionTable(List<SanctionModel> items) {
+    final headers = [
+      'Employé',
+      'Type',
+      'Motif',
+      'Date',
+      'Durée (jours)',
+      'Décision par',
+      'Statut',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(1.5),
+          2: pw.FlexColumnWidth(2),
+          3: pw.FlexColumnWidth(1),
+          4: pw.FlexColumnWidth(1),
+          5: pw.FlexColumnWidth(1.5),
+          6: pw.FlexColumnWidth(1),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final s in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    s.employeeNom,
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(s.type, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(s.motif, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(s.date),
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    s.dureeSuspension != null ? '${s.dureeSuspension}' : '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    s.decisionPar ?? '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(s.statut, style: pw.TextStyle(fontSize: 9)),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  List<pw.Widget> _buildTrainingTable(List<TrainingModel> items) {
+    final headers = [
+      'Employé',
+      'Intitulé',
+      'Date',
+      'Organisme',
+      'Durée (jours)',
+      'Attestation',
+      'Notes',
+    ];
+    return [
+      pw.Table(
+        border: pw.TableBorder.all(color: PdfColors.grey400),
+        columnWidths: const {
+          0: pw.FlexColumnWidth(2),
+          1: pw.FlexColumnWidth(2),
+          2: pw.FlexColumnWidth(1),
+          3: pw.FlexColumnWidth(1.5),
+          4: pw.FlexColumnWidth(1),
+          5: pw.FlexColumnWidth(1.5),
+          6: pw.FlexColumnWidth(2),
+        },
+        children: [
+          pw.TableRow(
+            children: headers
+                .map(
+                  (h) => pw.Padding(
+                    padding: const pw.EdgeInsets.all(4),
+                    child: pw.Text(
+                      h,
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+          for (final t in items)
+            pw.TableRow(
+              children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    t.employeeNom,
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(t.intitule, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    DateFormat('dd/MM/yyyy').format(t.date),
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(t.organisme, style: pw.TextStyle(fontSize: 9)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    '${t.dureeJours}',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    t.attestationUrl != null ? 'Oui' : 'Non',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.all(4),
+                  child: pw.Text(
+                    t.notes ?? '-',
+                    style: pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
   Color _actionColor(String action) {
     switch (action) {
       case 'ajout':
@@ -219,7 +999,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Paramètres')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -335,6 +1114,10 @@ class SettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+String generatedBy(UserModel? user) {
+  return user != null ? 'Genere par ${user.fullName}' : '';
 }
 
 class _SettingsSection extends StatelessWidget {
@@ -463,7 +1246,6 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider)!;
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Sécurité')),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -606,7 +1388,6 @@ class UsersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final users = ref.watch(usersProvider);
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Utilisateurs')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -825,73 +1606,81 @@ class _UserFormState extends ConsumerState<_UserForm> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              widget.user == null
-                  ? 'Nouvel utilisateur'
-                  : 'Modifier l\'utilisateur',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    label: 'Nom *',
-                    controller: _nomCtrl,
-                    validator: (v) => v!.isEmpty ? 'Requis' : null,
-                  ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.user == null
+                    ? 'Nouvel utilisateur'
+                    : 'Modifier l\'utilisateur',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: AppTextField(
-                    label: 'Prénom *',
-                    controller: _prenomCtrl,
-                    validator: (v) => v!.isEmpty ? 'Requis' : null,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Nom *',
+                      controller: _nomCtrl,
+                      validator: (v) => v!.isEmpty ? 'Requis' : null,
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AppTextField(
+                      label: 'Prénom *',
+                      controller: _prenomCtrl,
+                      validator: (v) => v!.isEmpty ? 'Requis' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (widget.user == null) ...[
+                AppTextField(
+                  label: 'Email *',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (v) => v!.isEmpty ? 'Requis' : null,
                 ),
+                const SizedBox(height: 12),
+                AppTextField(
+                  label: 'Mot de passe *',
+                  controller: _passCtrl,
+                  obscureText: true,
+                  validator: (v) =>
+                      (v?.length ?? 0) < 6 ? 'Min 6 caractères' : null,
+                ),
+                const SizedBox(height: 12),
               ],
-            ),
-            const SizedBox(height: 12),
-            if (widget.user == null) ...[
-              AppTextField(
-                label: 'Email *',
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => v!.isEmpty ? 'Requis' : null,
+              AppDropdown<String>(
+                label: 'Rôle',
+                value: _role,
+                items:
+                    [
+                          AppConstants.roleAdmin,
+                          AppConstants.roleRH,
+                          AppConstants.roleDirector,
+                          AppConstants.roleChefService,
+                          AppConstants.roleEmployee,
+                        ]
+                        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                        .toList(),
+                onChanged: (v) => setState(() => _role = v!),
               ),
-              const SizedBox(height: 12),
-              AppTextField(
-                label: 'Mot de passe *',
-                controller: _passCtrl,
-                obscureText: true,
-                validator: (v) =>
-                    (v?.length ?? 0) < 6 ? 'Min 6 caractères' : null,
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _save,
+                child: const Text('Enregistrer'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
             ],
-            AppDropdown<String>(
-              label: 'Rôle',
-              value: _role,
-              items: [
-                AppConstants.roleAdmin,
-                AppConstants.roleRH,
-                AppConstants.roleDirector,
-                AppConstants.roleChefService,
-                AppConstants.roleEmployee,
-              ].map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-              onChanged: (v) => setState(() => _role = v!),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _save,
-              child: const Text('Enregistrer'),
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );

@@ -22,8 +22,17 @@ class ContractDetailScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            if (GoRouter.of(context).canPop()) {
+              GoRouter.of(context).pop();
+            } else {
+              context.go('/contracts');
+            }
+          },
+        ),
         title: const Text('Détail contrat'),
         actions: [
           IconButton(

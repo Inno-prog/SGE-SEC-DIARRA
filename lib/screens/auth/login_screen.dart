@@ -40,8 +40,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,10 +52,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const BoxDecoration(
                   gradient: AppColors.primaryGradient,
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.business, size: 80, color: Colors.white),
+                    Image.asset(
+                      'assets/images/secdiarra.png',
+                      height: 80,
+                      width: 80,
+                    ),
                     SizedBox(height: 24),
                     Text(
                       'SGE SEC DIARRA',
