@@ -21,9 +21,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Clean build cache
+        run: flutter clean
+
       - name: Build Windows release
-        shell: bash
-        run: CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" flutter build windows --release
+        run: flutter build windows --release
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
