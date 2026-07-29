@@ -16,16 +16,12 @@ class DocumentsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final canViewAll = user != null &&
-        (user.role == AppConstants.roleAdmin ||
-            user.role == AppConstants.roleDirector ||
-            user.role == AppConstants.roleRH);
-    final employeeId = canViewAll ? null : user?.employeeId;
+    final employeeId = user?.employeeId ?? user?.id;
     final docs = ref.watch(documentsProvider(employeeId));
     return Scaffold(
       appBar: AppBar(title: const Text('Documents')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showUploadForm(context, ref, employeeId),
+        onPressed: () => _showUploadForm(context, ref),
         icon: const Icon(Icons.upload_file),
         label: const Text('Ajouter un document'),
       ),
@@ -43,12 +39,12 @@ class DocumentsScreen extends ConsumerWidget {
     );
   }
 
-  void _showUploadForm(BuildContext context, WidgetRef ref, [String? selfEmployeeId]) {
+  void _showUploadForm(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _DocumentForm(selfEmployeeId: selfEmployeeId),
+      builder: (_) => const _DocumentForm(),
     );
   }
 }
@@ -102,8 +98,7 @@ class _DocTile extends ConsumerWidget {
 }
 
 class _DocumentForm extends ConsumerStatefulWidget {
-  final String? selfEmployeeId;
-  const _DocumentForm({this.selfEmployeeId});
+  const _DocumentForm();
 
   @override
   ConsumerState<_DocumentForm> createState() => _DocumentFormState();
@@ -120,21 +115,9 @@ class _DocumentFormState extends ConsumerState<_DocumentForm> {
   @override
   void initState() {
     super.initState();
-    if (widget.selfEmployeeId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final list = ref.read(allEmployeesProvider).value;
-        if (list != null && list.isNotEmpty) {
-          final emp = list.firstWhere(
-            (e) => e.id == widget.selfEmployeeId,
-            orElse: () => list.first,
-          );
-          setState(() {
-            _employeeId = emp.id;
-            _employeeNom = emp.fullName;
-          });
-        }
-      });
-    }
+    final user = ref.read(currentUserProvider);
+    _employeeId = user?.employeeId ?? user?.id;
+    _employeeNom = user != null ? '${user.prenom} ${user.nom}' : null;
   }
 
   @override
@@ -189,7 +172,6 @@ Future<void> _save() async {
 
   @override
   Widget build(BuildContext context) {
-    final employees = ref.watch(allEmployeesProvider);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom, left: 20, right: 20, top: 20),
       child: SingleChildScrollView(
@@ -199,26 +181,11 @@ Future<void> _save() async {
           children: [
           const Text('Ajouter un document', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
-          if (widget.selfEmployeeId == null)
-            employees.when(
-              data: (list) => AppDropdown<String>(
-                label: 'Employé *',
-                value: _employeeId,
-                items: list.map((e) => DropdownMenuItem(value: e.id, child: Text(e.fullName))).toList(),
-                onChanged: (v) {
-                  final emp = list.firstWhere((e) => e.id == v);
-                  setState(() { _employeeId = v; _employeeNom = emp.fullName; });
-                },
-              ),
-              loading: () => const SizedBox(),
-              error: (e, _) => Center(child: Text("Erreur: $e", style: const TextStyle(color: AppColors.error))),
-            )
-          else
-            AppTextField(
-              label: 'Employé',
-              controller: TextEditingController(text: _employeeNom ?? ''),
-              readOnly: true,
-            ),
+          AppTextField(
+            label: 'Employé',
+            controller: TextEditingController(text: _employeeNom ?? ''),
+            readOnly: true,
+          ),
           const SizedBox(height: 12),
           AppDropdown<String>(
             label: 'Type de document',
