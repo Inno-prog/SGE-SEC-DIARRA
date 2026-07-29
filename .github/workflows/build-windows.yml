@@ -27,12 +27,9 @@ jobs:
       - name: Build Windows release
         run: flutter build windows --release
 
-      - name: List build output
-        run: dir build\windows\x64\Release
-
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: sge_secdiarra-windows-x64
-          path: build/windows/x64/Release/
+          path: build/windows/x64/Release/runner/
           retention-days: 14
