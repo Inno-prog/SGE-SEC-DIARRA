@@ -22,7 +22,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
-        run: CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5" flutter build windows --release
+        run: $env:CMAKE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"; flutter build windows --release
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
