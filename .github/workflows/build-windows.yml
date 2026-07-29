@@ -30,7 +30,8 @@ jobs:
       - name: Package installer with NSIS
         run: |
           choco install nsis -y --no-progress
-          $exe = Get-ChildItem -Recurse build\windows\x64\Release\runner\Release\ -Filter *.exe | Select-Object -First 1 -ExpandProperty FullName
+          $env:PATH += ";C:\Program Files (x86)\NSIS"
+          $exe = Get-ChildItem -Recurse build\windows\x64\ -Filter *.exe | Select-Object -First 1 -ExpandProperty FullName
           Write-Host "Found EXE: $exe"
           $script = @"
           OutFile "sge_secdiarra-installer.exe"
@@ -44,7 +45,7 @@ jobs:
           SectionEnd
           "@
           Set-Content -Path installer.nsi -Value $script
-          makensis installer.nsi
+          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
