@@ -22,7 +22,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows release
-        run: flutter build windows --release
+        run: flutter build windows --release --cmake-args="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
