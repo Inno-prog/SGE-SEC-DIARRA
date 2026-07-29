@@ -22,7 +22,7 @@ jobs:
         run: flutter pub get
 
       - name: Install compatible CMake
-        run: choco install cmake --version=3.29.6 -y --no-progress
+        run: choco install cmake --version=3.29.6 -y --no-progress --allow-downgrade --force
 
       - name: Build Windows release
         run: flutter build windows --release
