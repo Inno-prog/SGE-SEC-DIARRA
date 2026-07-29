@@ -4,6 +4,8 @@ set(CMAKE_POLICY_VERSION_MINIMUM "3.5")
 cmake_minimum_required(VERSION 3.14)
 project(sge_secdiarra LANGUAGES CXX)
 
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "sge_secdiarra")
