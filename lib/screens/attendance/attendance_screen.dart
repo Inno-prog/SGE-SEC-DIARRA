@@ -19,6 +19,11 @@ class AttendanceScreen extends ConsumerWidget {
         AttendanceParams(date: selectedDate, employeeId: null),
       ),
     );
+    final user = ref.watch(currentUserProvider);
+    final canPoint = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,16 +33,18 @@ class AttendanceScreen extends ConsumerWidget {
         ),
         title: const Text('Présences'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            onPressed: () => _showQRScanner(context, ref),
-            tooltip: 'Scanner QR',
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_add_outlined),
-            onPressed: () => _showManualForm(context, ref),
-            tooltip: 'Pointage manuel',
-          ),
+          if (canPoint)
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              onPressed: () => _showQRScanner(context, ref),
+              tooltip: 'Scanner QR',
+            ),
+          if (canPoint)
+            IconButton(
+              icon: const Icon(Icons.person_add_outlined),
+              onPressed: () => _showManualForm(context, ref),
+              tooltip: 'Pointage manuel',
+            ),
         ],
       ),
       body: Column(

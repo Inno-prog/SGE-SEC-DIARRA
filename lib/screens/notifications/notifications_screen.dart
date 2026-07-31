@@ -548,6 +548,11 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   @override
   Widget build(BuildContext context) {
     final events = ref.watch(agendaProvider);
+    final user = ref.watch(currentUserProvider);
+    final canCreateEvent = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
 
     return Scaffold(
       appBar: AppBar(
@@ -557,11 +562,13 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
         ),
         title: const Text('Agenda'),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouvel événement'),
-      ),
+      floatingActionButton: canCreateEvent
+          ? FloatingActionButton.extended(
+              onPressed: () => _showForm(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Nouvel événement'),
+            )
+          : null,
       body: Column(
         children: [
           Card(
