@@ -668,22 +668,6 @@ class _EmployeeDashboard extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
           children: [
-            // Welcome header
-            Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-              ),
-              padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-              child: Text(
-                'Bonjour, ${user.prenom} 👋',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
