@@ -138,6 +138,14 @@ class _RHDashboard extends ConsumerWidget {
     final expiringContracts = ref.watch(expiringContractsProvider);
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () =>
+              ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: Text('Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''}'),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
         child: SingleChildScrollView(
@@ -648,6 +656,14 @@ class _EmployeeDashboard extends ConsumerWidget {
     );
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () =>
+              ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: Text('Bonjour, ${user.prenom}'),
+      ),
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Column(
