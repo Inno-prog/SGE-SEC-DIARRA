@@ -24,18 +24,18 @@ android {
         multiDexEnabled = true
     }
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.create("release")
+    signingConfigs {
+        create("upload") {
+            storeFile = rootProject.file(project.findProperty("MYAPP_UPLOAD_STORE_FILE") as String? ?: "../upload-keystore.jks")
+            storePassword = project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") as String? ?: "sge_secdiarra"
+            keyAlias = project.findProperty("MYAPP_UPLOAD_KEY_ALIAS") as String? ?: "upload"
+            keyPassword = project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") as String? ?: "sge_secdiarra"
         }
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file(project.findProperty("MYAPP_UPLOAD_STORE_FILE") ?: "upload-keystore.jks")
-            storePassword = project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") ?: "sge_secdiarra"
-            keyAlias = project.findProperty("MYAPP_UPLOAD_KEY_ALIAS") ?: "upload"
-            keyPassword = project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") ?: "sge_secdiarra"
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("upload")
         }
     }
 }
