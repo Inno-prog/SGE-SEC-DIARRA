@@ -47,9 +47,17 @@ jobs:
           Set-Content -Path installer.nsi -Value $script
           & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
 
-      - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release and upload installer
+        uses: softprops/action-gh-release@v2
         with:
-          name: sge_secdiarra-windows-installer
-          path: sge_secdiarra-installer.exe
-          retention-days: 14
+          files: sge_secdiarra-installer.exe
+          tag_name: windows-latest
+          name: SGE Secdiarra - Windows Installer
+          body: |
+            Installateur Windows pour SGE Secdiarra.
+            Double-cliquez sur `sge_secdiarra-installer.exe` pour installer l'application.
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
