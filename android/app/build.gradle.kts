@@ -26,7 +26,7 @@ android {
 
     signingConfigs {
         create("upload") {
-            storeFile = rootProject.file(project.findProperty("MYAPP_UPLOAD_STORE_FILE") as String? ?: "../upload-keystore.jks")
+            storeFile = rootProject.file(project.findProperty("MYAPP_UPLOAD_STORE_FILE") as String? ?: "upload-keystore.jks")
             storePassword = project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") as String? ?: "sge_secdiarra"
             keyAlias = project.findProperty("MYAPP_UPLOAD_KEY_ALIAS") as String? ?: "upload"
             keyPassword = project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") as String? ?: "sge_secdiarra"

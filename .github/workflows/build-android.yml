@@ -21,6 +21,10 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Create release keystore for CI
+        run: |
+          keytool -genkeypair -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload -storepass sge_secdiarra -keypass sge_secdiarra -dname "CN=sge_secdiarra, OU=sge_secdiarra, O=sge_secdiarra, L=sge_secdiarra, ST=BF, C=BF"
+
       - name: Build Android APK
         run: flutter build apk --release
 
