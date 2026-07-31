@@ -11,11 +11,11 @@ service cloud.firestore {
     // Admins, directors, and RH can read all attendance records
     match /attendance/{attendanceId} {
       allow read: if request.auth != null && (
-        resource.data.employeeId == request.auth.uid ||
+        resource.data.employeeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.employeeId ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh']
       );
-      allow create: if request.auth != null && request.resource.data.employeeId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.employeeId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.employeeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.employeeId;
+      allow update, delete: if request.auth != null && resource.data.employeeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.employeeId;
     }
 
     // Conversations: only participants can read/write
