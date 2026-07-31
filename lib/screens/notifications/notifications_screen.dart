@@ -673,6 +673,12 @@ class _EventTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final canDelete = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -705,26 +711,27 @@ class _EventTile extends ConsumerWidget {
                 style: TextStyle(color: _color, fontSize: 11),
               ),
             ),
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline,
-                size: 18,
-                color: AppColors.error,
+            if (canDelete)
+              IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: AppColors.error,
+                ),
+                onPressed: () async {
+                  final ok = await showConfirm(
+                    context,
+                    title: 'Supprimer',
+                    message: 'Supprimer cet événement ?',
+                  );
+                  if (ok && context.mounted) {
+                    await ref
+                        .read(firestoreServiceProvider)
+                        .deleteAgendaEvent(event.id);
+                    if (context.mounted) showSnack(context, 'Événement supprimé');
+                  }
+                },
               ),
-              onPressed: () async {
-                final ok = await showConfirm(
-                  context,
-                  title: 'Supprimer',
-                  message: 'Supprimer cet événement ?',
-                );
-                if (ok && context.mounted) {
-                  await ref
-                      .read(firestoreServiceProvider)
-                      .deleteAgendaEvent(event.id);
-                  if (context.mounted) showSnack(context, 'Événement supprimé');
-                }
-              },
-            ),
           ],
         ),
       ),

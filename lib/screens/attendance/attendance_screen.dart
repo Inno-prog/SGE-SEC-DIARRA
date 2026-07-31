@@ -266,6 +266,12 @@ class _AttendanceTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final canDelete = user != null &&
+        (user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleDirector ||
+            user.role == AppConstants.roleRH);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -288,33 +294,34 @@ class _AttendanceTile extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             StatusBadge(status: attendance.statut),
-            PopupMenuButton<String>(
-              onSelected: (v) async {
-                if (v == 'delete') {
-                  final ok = await showConfirm(
-                    context,
-                    title: 'Supprimer',
-                    message: 'Supprimer ce pointage ?',
-                  );
-                  if (ok && context.mounted) {
-                    await ref
-                        .read(firestoreServiceProvider)
-                        .deleteAttendance(attendance.id);
-                    if (context.mounted)
-                      showSnack(context, 'Pointage supprimé');
+            if (canDelete)
+              PopupMenuButton<String>(
+                onSelected: (v) async {
+                  if (v == 'delete') {
+                    final ok = await showConfirm(
+                      context,
+                      title: 'Supprimer',
+                      message: 'Supprimer ce pointage ?',
+                    );
+                    if (ok && context.mounted) {
+                      await ref
+                          .read(firestoreServiceProvider)
+                          .deleteAttendance(attendance.id);
+                      if (context.mounted)
+                        showSnack(context, 'Pointage supprimé');
+                    }
                   }
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Text(
-                    'Supprimer',
-                    style: TextStyle(color: AppColors.error),
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Text(
+                      'Supprimer',
+                      style: TextStyle(color: AppColors.error),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),

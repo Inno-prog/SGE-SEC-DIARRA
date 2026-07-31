@@ -12,7 +12,7 @@ service cloud.firestore {
     match /attendance/{attendanceId} {
       allow read: if request.auth != null && (
         resource.data.employeeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.employeeId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh']
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
       );
       allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
       allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
@@ -69,7 +69,8 @@ service cloud.firestore {
     match /agenda/{eventId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
     }
 
     // Audit logs: readable by authenticated users
