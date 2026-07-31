@@ -12,7 +12,12 @@ class SettingsScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Paramètres')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Paramètres'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

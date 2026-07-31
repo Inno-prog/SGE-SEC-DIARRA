@@ -15,7 +15,12 @@ class SanctionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sanctions = ref.watch(sanctionsProvider(null));
     return Scaffold(
-      appBar: AppBar(title: const Text('Sanctions')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Sanctions'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),
@@ -314,7 +319,12 @@ class TrainingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final trainings = ref.watch(trainingsProvider(null));
     return Scaffold(
-      appBar: AppBar(title: const Text('Formations')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Formations'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),
@@ -584,7 +594,12 @@ class EvaluationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final evals = ref.watch(evaluationsProvider(null));
     return Scaffold(
-      appBar: AppBar(title: const Text('Évaluations')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Évaluations'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

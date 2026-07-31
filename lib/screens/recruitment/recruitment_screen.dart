@@ -14,7 +14,12 @@ class RecruitmentScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final offers = ref.watch(recruitmentProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Recrutement')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Recrutement'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

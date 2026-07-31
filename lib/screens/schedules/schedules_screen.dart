@@ -12,7 +12,12 @@ class SchedulesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final schedules = ref.watch(schedulesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Horaires de travail')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Horaires de travail'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

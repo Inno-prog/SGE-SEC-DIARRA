@@ -57,7 +57,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     if (user == null) return const LoadingWidget();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sécurité')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Sécurité'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

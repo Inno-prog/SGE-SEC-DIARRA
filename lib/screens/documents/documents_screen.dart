@@ -19,7 +19,12 @@ class DocumentsScreen extends ConsumerWidget {
     final employeeId = user?.employeeId ?? user?.id;
     final docs = ref.watch(documentsProvider(employeeId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Documents')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Documents'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showUploadForm(context, ref),
         icon: const Icon(Icons.upload_file),

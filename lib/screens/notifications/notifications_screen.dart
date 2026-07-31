@@ -17,6 +17,10 @@ class NotificationsScreen extends ConsumerWidget {
     final notifs = ref.watch(notificationsProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
         title: const Text('Notifications'),
         actions: [
           TextButton(
@@ -143,7 +147,12 @@ class MessagingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final conversations = ref.watch(conversationsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Messagerie')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Messagerie'),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showNewConversation(context, ref),
         child: const Icon(Icons.edit_outlined),
@@ -383,7 +392,12 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
     final me = ref.watch(currentUserProvider)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.nom)),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: Text(widget.nom),
       body: Column(
         children: [
           Expanded(
@@ -534,7 +548,12 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     final events = ref.watch(agendaProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Agenda')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Agenda'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

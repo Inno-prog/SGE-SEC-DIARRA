@@ -460,7 +460,12 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
 
     if (!canEdit) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Accès refusé')),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+          ),
+          title: const Text('Accès refusé'),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
@@ -478,6 +483,10 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
         title: Text(
           widget.employeeId == null ? 'Nouvel employé' : 'Modifier l\'employé',
         ),

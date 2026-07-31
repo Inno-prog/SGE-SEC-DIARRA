@@ -22,6 +22,10 @@ class AttendanceScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
         title: const Text('Présences'),
         actions: [
           IconButton(

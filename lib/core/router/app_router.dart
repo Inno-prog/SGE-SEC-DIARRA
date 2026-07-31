@@ -175,7 +175,9 @@ class _NarrowLayout extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final key = ref.watch(drawerKeyProvider);
     return Scaffold(
+      key: key,
       drawer: Drawer(
         child: _SideNav(currentLocation: GoRouterState.of(context).matchedLocation, unreadCount: 0),
       ),

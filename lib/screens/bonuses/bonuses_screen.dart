@@ -13,7 +13,12 @@ class BonusesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final employees = ref.watch(allEmployeesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Primes')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Primes'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

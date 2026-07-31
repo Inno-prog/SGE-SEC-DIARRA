@@ -37,6 +37,10 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen>
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
         title: const Text('Congés'),
         bottom: TabBar(
           controller: _tabCtrl,

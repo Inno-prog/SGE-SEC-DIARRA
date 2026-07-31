@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
@@ -16,6 +17,13 @@ Future<void> main() async {
     );
   } catch (e) {
     // Firebase already initialized (e.g., by google-services.json plugin on Android)
+  }
+  try {
+    await FirebaseFirestore.instance.enablePersistence(
+      const PersistenceSettings(synchronizeTabs: true),
+    );
+  } catch (e) {
+    // Persistence already enabled or not supported on this platform
   }
   await initializeDateFormatting('fr_FR', null);
   runApp(

@@ -18,7 +18,12 @@ class AbsencesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final attendance = ref.watch(attendanceProvider(const AttendanceParams()));
     return Scaffold(
-      appBar: AppBar(title: const Text('Absences')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Absences'),
       body: attendance.when(
         data: (list) {
           final absences = list.where((a) => a.statut == 'absent').toList();

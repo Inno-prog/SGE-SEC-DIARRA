@@ -28,7 +28,12 @@ class ReportsScreen extends ConsumerWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Rapports')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Rapports'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -999,7 +1004,12 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Paramètres')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Paramètres'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1246,7 +1256,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Sécurité')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Sécurité'),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1388,7 +1403,12 @@ class UsersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final users = ref.watch(usersProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Utilisateurs')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Utilisateurs'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.person_add_outlined),

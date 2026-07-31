@@ -37,6 +37,10 @@ final initialLocationProvider = Provider<String>((ref) {
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.system);
 
+final drawerKeyProvider = Provider<GlobalKey<ScaffoldState>>((ref) {
+  return GlobalKey<ScaffoldState>();
+});
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 final dashboardStatsProvider = FutureProvider<Map<String, int>>((ref) {
   return ref.watch(firestoreServiceProvider).getDashboardStats();

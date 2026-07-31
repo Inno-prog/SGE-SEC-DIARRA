@@ -53,7 +53,7 @@ class _AdminDashboard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} 👋',
+                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} ',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -155,7 +155,7 @@ class _RHDashboard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} 👋',
+                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} ',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -573,6 +573,11 @@ class _ChefServiceDashboard extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () =>
+              ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
         title: Text('Bonjour, ${user.prenom}'),
         actions: [
           IconButton(

@@ -13,7 +13,12 @@ class DepartmentsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final depts = ref.watch(departmentsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Départements')),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+        ),
+        title: const Text('Départements'),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),
