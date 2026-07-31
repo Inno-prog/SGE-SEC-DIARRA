@@ -26,7 +26,16 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.create("release")
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(project.findProperty("MYAPP_UPLOAD_STORE_FILE") ?: "upload-keystore.jks")
+            storePassword = project.findProperty("MYAPP_UPLOAD_STORE_PASSWORD") ?: "sge_secdiarra"
+            keyAlias = project.findProperty("MYAPP_UPLOAD_KEY_ALIAS") ?: "upload"
+            keyPassword = project.findProperty("MYAPP_UPLOAD_KEY_PASSWORD") ?: "sge_secdiarra"
         }
     }
 }
