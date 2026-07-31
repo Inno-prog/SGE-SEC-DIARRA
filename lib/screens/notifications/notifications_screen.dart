@@ -153,6 +153,7 @@ class MessagingScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Messagerie'),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showNewConversation(context, ref),
         child: const Icon(Icons.edit_outlined),
@@ -398,6 +399,7 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: Text(widget.nom),
+      ),
       body: Column(
         children: [
           Expanded(
@@ -554,6 +556,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Agenda'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.add),

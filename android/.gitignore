@@ -13,3 +13,5 @@ key.properties
 **/*.keystore
 **/*.jks
 upload-keystore.jks
+upload-keystore.jks
+upload-keystore.jks

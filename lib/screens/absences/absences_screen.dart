@@ -24,6 +24,7 @@ class AbsencesScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Absences'),
+      ),
       body: attendance.when(
         data: (list) {
           final absences = list.where((a) => a.statut == 'absent').toList();

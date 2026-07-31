@@ -63,6 +63,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Sécurité'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

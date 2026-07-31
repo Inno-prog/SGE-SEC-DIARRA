@@ -34,6 +34,7 @@ class ReportsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Rapports'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1010,6 +1011,7 @@ class SettingsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Paramètres'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1262,6 +1264,7 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Sécurité'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1409,6 +1412,7 @@ class UsersScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Utilisateurs'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
         icon: const Icon(Icons.person_add_outlined),

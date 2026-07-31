@@ -25,6 +25,7 @@ class DocumentsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Documents'),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showUploadForm(context, ref),
         icon: const Icon(Icons.upload_file),

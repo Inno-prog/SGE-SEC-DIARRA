@@ -466,6 +466,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
             onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
           ),
           title: const Text('Accès refusé'),
+        ),
         body: const Center(
           child: Padding(
             padding: EdgeInsets.all(24),
