@@ -7,6 +7,17 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Attendance: users can read their own attendance records
+    // Admins, directors, and RH can read all attendance records
+    match /attendance/{attendanceId} {
+      allow read: if request.auth != null && (
+        resource.data.employeeId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh']
+      );
+      allow create: if request.auth != null && request.resource.data.employeeId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.employeeId == request.auth.uid;
+    }
+
     // Conversations: only participants can read/write
     match /conversations/{conversationId} {
       allow read, update, delete: if request.auth != null && 
