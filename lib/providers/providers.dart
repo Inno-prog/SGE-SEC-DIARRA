@@ -41,6 +41,14 @@ final drawerKeyProvider = Provider<GlobalKey<ScaffoldState>>((ref) {
   return GlobalKey<ScaffoldState>();
 });
 
+final ensureEmployeeIdProvider = FutureProvider<void>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || user.employeeId != null) return;
+  final auth = ref.watch(authServiceProvider);
+  await auth.updateUser(user.copyWith(employeeId: user.id));
+  ref.invalidate(authStateProvider);
+});
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 final dashboardStatsProvider = FutureProvider<Map<String, int>>((ref) {
   return ref.watch(firestoreServiceProvider).getDashboardStats();

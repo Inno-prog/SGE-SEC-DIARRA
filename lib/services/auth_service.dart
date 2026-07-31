@@ -18,9 +18,10 @@ class AuthService {
     if (cred.user == null) return null;
     final userRef = _db.collection(AppConstants.colUsers).doc(cred.user!.uid);
     final userDoc = await userRef.get();
+    final updates = <String, dynamic>{'lastLogin': Timestamp.now()};
     if (!userDoc.exists) {
       final defaultPrenom = email.split('@').first.split('.').first;
-      await userRef.set({
+      updates.addAll({
         'email': email,
         'nom': '',
         'prenom': defaultPrenom,
@@ -30,14 +31,17 @@ class AuthService {
         'isActive': true,
         'twoFactorEnabled': false,
         'createdAt': Timestamp.now(),
-        'lastLogin': Timestamp.now(),
         'permissions': [],
         'darkMode': false,
         'emailNotifications': true,
       });
     } else {
-      await userRef.update({'lastLogin': Timestamp.now()});
+      final data = userDoc.data() ?? {};
+      if ((data['employeeId'] ?? null) == null) {
+        updates['employeeId'] = cred.user!.uid;
+      }
     }
+    await userRef.set(updates, SetOptions(merge: true));
     return getUserById(cred.user!.uid);
   }
 
@@ -67,7 +71,7 @@ class AuthService {
       nom: nom,
       prenom: prenom,
       role: role,
-      employeeId: employeeId,
+      employeeId: employeeId ?? cred.user!.uid,
       createdAt: DateTime.now(),
       darkMode: false,
       emailNotifications: true,

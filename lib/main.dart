@@ -43,7 +43,8 @@ class SGEApp extends ConsumerWidget {
 
     return _LocationSaver(
       child: _ThemeSaver(
-        child: MaterialApp.router(
+        child: _EmployeeIdFixer(
+          child: MaterialApp.router(
           title: 'SGE Secdiarra',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
@@ -91,6 +92,23 @@ class _ThemeSaver extends ConsumerWidget {
           ref.read(themeModeProvider.notifier).state = mode;
         }
       }
+    });
+
+    return child;
+  }
+}
+
+class _EmployeeIdFixer extends ConsumerWidget {
+  final Widget child;
+  const _EmployeeIdFixer({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<void>>(ensureEmployeeIdProvider, (previous, next) {
+      next.whenOrNull(
+        error: (e, _) => debugPrint('employeeId fix failed: $e'),
+        data: (_) => debugPrint('employeeId fix applied'),
+      );
     });
 
     return child;
