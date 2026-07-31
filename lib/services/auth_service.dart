@@ -25,7 +25,7 @@ class AuthService {
         'nom': '',
         'prenom': defaultPrenom,
         'role': AppConstants.roleEmployee,
-        'employeeId': null,
+        'employeeId': cred.user!.uid,
         'photoUrl': null,
         'isActive': true,
         'twoFactorEnabled': false,
