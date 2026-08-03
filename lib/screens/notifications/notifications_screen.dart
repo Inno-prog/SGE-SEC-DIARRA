@@ -753,6 +753,7 @@ class _EventTile extends ConsumerWidget {
                     await ref
                         .read(firestoreServiceProvider)
                         .deleteAgendaEvent(event.id);
+                    ref.invalidate(agendaProvider);
                     if (context.mounted) showSnack(context, 'Événement supprimé');
                   }
                 },
@@ -814,6 +815,7 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
               createdAt: DateTime.now(),
             ),
           );
+      ref.invalidate(agendaProvider);
       if (mounted) {
         Navigator.pop(context);
         showSnack(context, 'Événement ajouté');
