@@ -55,10 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const FlutterLogo(
-                      size: 80,
-                      textColor: Colors.white,
-                    ),
+                    Icon(Icons.business, size: 80, color: Colors.white),
                     SizedBox(height: 24),
                     Text(
                       'SGE SEC DIARRA',
