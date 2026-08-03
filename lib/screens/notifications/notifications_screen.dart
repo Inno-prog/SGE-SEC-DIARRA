@@ -552,7 +552,23 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     final canCreateEvent = user != null &&
         (user.role == AppConstants.roleAdmin ||
             user.role == AppConstants.roleDirector ||
-            user.role == AppConstants.roleRH);
+            user.role == AppConstants.roleRH ||
+            user.role == AppConstants.roleChefService);
+
+    if (user == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+          ),
+          title: const Text('Agenda'),
+        ),
+        body: const Center(
+          child: Text('Vous devez être connecté pour voir l\'agenda.'),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -632,7 +648,16 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                       );
               },
               loading: () => const LoadingWidget(),
-              error: (e, _) => Center(child: Text('$e')),
+              error: (e, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Erreur: $e',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
