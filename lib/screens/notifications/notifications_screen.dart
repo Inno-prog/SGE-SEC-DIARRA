@@ -780,6 +780,8 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
   String _type = 'reunion';
   late DateTime _dateDebut;
   late DateTime _dateFin;
+  TimeOfDay _heureDebut = TimeOfDay.now();
+  TimeOfDay _heureFin = TimeOfDay.now();
   bool _loading = false;
 
   @override
@@ -801,6 +803,20 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
     setState(() => _loading = true);
     try {
       final user = ref.read(currentUserProvider)!;
+      final dateDebut = DateTime(
+        _dateDebut.year,
+        _dateDebut.month,
+        _dateDebut.day,
+        _heureDebut.hour,
+        _heureDebut.minute,
+      );
+      final dateFin = DateTime(
+        _dateFin.year,
+        _dateFin.month,
+        _dateFin.day,
+        _heureFin.hour,
+        _heureFin.minute,
+      );
       await ref
           .read(firestoreServiceProvider)
           .addAgendaEvent(
@@ -809,8 +825,8 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
               titre: _titreCtrl.text.trim(),
               description: _descCtrl.text.trim(),
               type: _type,
-              dateDebut: _dateDebut,
-              dateFin: _dateFin,
+              dateDebut: dateDebut,
+              dateFin: dateFin,
               createdBy: user.id,
               createdAt: DateTime.now(),
             ),
@@ -867,6 +883,38 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
                 label: 'Description',
                 controller: _descCtrl,
                 maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _heureDebut,
+                        );
+                        if (picked != null) setState(() => _heureDebut = picked);
+                      },
+                      icon: const Icon(Icons.access_time_outlined),
+                      label: Text('Début: ${_heureDebut.format(context)}'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _heureFin,
+                        );
+                        if (picked != null) setState(() => _heureFin = picked);
+                      },
+                      icon: const Icon(Icons.access_time_outlined),
+                      label: Text('Fin: ${_heureFin.format(context)}'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               ElevatedButton(
