@@ -552,8 +552,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     final canCreateEvent = user != null &&
         (user.role == AppConstants.roleAdmin ||
             user.role == AppConstants.roleDirector ||
-            user.role == AppConstants.roleRH ||
-            user.role == AppConstants.roleChefService);
+            user.role == AppConstants.roleRH);
 
     if (user == null) {
       return Scaffold(

@@ -20,8 +20,11 @@ service cloud.firestore {
         resource.data.employeeId == request.auth.uid ||
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
       );
-      allow create: if request.auth != null && request.resource.data.employeeId == request.auth.uid;
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
+      allow create: if request.auth != null && (
+        request.resource.data.employeeId == request.auth.uid ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
+      );
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
     }
 
     // Conversations: only participants can read/write
@@ -82,8 +85,8 @@ service cloud.firestore {
     // Agenda: all authenticated users can read, privileged roles can write
     match /agenda/{eventId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
+      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
+      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
       allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
     }
 
