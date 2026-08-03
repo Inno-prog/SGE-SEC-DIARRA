@@ -55,10 +55,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      'assets/images/secdiarra.png',
-                      height: 80,
-                      width: 80,
+                    const FlutterLogo(
+                      size: 80,
+                      textColor: Colors.white,
                     ),
                     SizedBox(height: 24),
                     Text(
