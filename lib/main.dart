@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +19,10 @@ Future<void> main() async {
   } catch (e) {
     // Firebase already initialized (e.g., by google-services.json plugin on Android)
   }
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+    appleProvider: AppleProvider.debug,
+  );
   try {
     await FirebaseFirestore.instance.enablePersistence(
       const PersistenceSettings(synchronizeTabs: true),
@@ -45,13 +50,14 @@ class SGEApp extends ConsumerWidget {
       child: _ThemeSaver(
         child: _EmployeeIdFixer(
           child: MaterialApp.router(
-          title: 'SGE Secdiarra',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeMode,
-          routerConfig: router,
-          locale: const Locale('fr', 'FR'),
+            title: 'SGE Secdiarra',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: themeMode,
+            routerConfig: router,
+            locale: const Locale('fr', 'FR'),
+          ),
         ),
       ),
     );

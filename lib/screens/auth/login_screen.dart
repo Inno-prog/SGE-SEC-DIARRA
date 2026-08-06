@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../providers/providers.dart';
@@ -29,9 +32,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      await ref
+      final user = await ref
           .read(authServiceProvider)
           .signIn(_emailCtrl.text.trim(), _passCtrl.text);
+      if (!mounted) return;
+      if (user == null) {
+        showSnack(context, 'Email ou mot de passe incorrect', isError: true);
+        return;
+      }
+      // Invalidate authStateProvider to force router re-evaluation
+      ref.invalidate(authStateProvider);
+      if (user.mustChangePassword) {
+        context.go(AppRoutes.security);
+      } else {
+        final last = ref.read(lastLocationProvider);
+        context.go(last != AppRoutes.login ? last : AppRoutes.dashboard);
+      }
     } catch (e) {
       if (mounted)
         showSnack(context, 'Email ou mot de passe incorrect', isError: true);
@@ -40,19 +56,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _showForgotPassword() {
+    showDialog(
+      context: context,
+      builder: (_) =>
+          _ForgotPasswordDialog(initialEmail: _emailCtrl.text.trim()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [
-          // Left panel
           if (MediaQuery.of(context).size.width >= 800)
             Expanded(
               child: Container(
                 decoration: const BoxDecoration(
                   gradient: AppColors.primaryGradient,
                 ),
-                child: Column(
+                child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.business, size: 80, color: Colors.white),
@@ -82,7 +105,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
             ),
-          // Right panel
           Expanded(
             child: Center(
               child: SingleChildScrollView(
@@ -148,7 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: _showForgotPassword,
                             child: const Text('Mot de passe oublié ?'),
                           ),
                         ),
@@ -182,6 +204,132 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends ConsumerStatefulWidget {
+  final String initialEmail;
+  const _ForgotPasswordDialog({required this.initialEmail});
+
+  @override
+  ConsumerState<_ForgotPasswordDialog> createState() =>
+      _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends ConsumerState<_ForgotPasswordDialog> {
+  late final TextEditingController _emailCtrl;
+  bool _loading = false;
+  bool _sent = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailCtrl = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final email = _emailCtrl.text.trim();
+    if (!email.contains('@')) {
+      showSnack(context, 'Email invalide', isError: true);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (mounted) setState(() => _sent = true);
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        final msg = e.code == 'user-not-found'
+            ? 'Aucun compte trouvé avec cet email'
+            : 'Erreur: ${e.message}';
+        showSnack(context, msg, isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Mot de passe oublié'),
+      content: _sent
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.mark_email_read_outlined,
+                    color: AppColors.success, size: 52),
+                const SizedBox(height: 16),
+                const Text(
+                  'Un lien de réinitialisation a été envoyé à :',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _emailCtrl.text.trim(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Cliquez sur le lien dans l\'email pour définir votre nouveau mot de passe, puis revenez vous connecter.',
+                  textAlign: TextAlign.center,
+                  style:
+                      TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.',
+                  style:
+                      TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  label: 'Email',
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  prefixIcon: const Icon(Icons.email_outlined),
+                ),
+              ],
+            ),
+      actions: _sent
+          ? [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fermer'),
+              ),
+            ]
+          : [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annuler'),
+              ),
+              ElevatedButton(
+                onPressed: _loading ? null : _send,
+                child: _loading
+                    ? const SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text('Envoyer le lien'),
+              ),
+            ],
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -27,22 +28,45 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
   }
 
   Future<void> _changePassword() async {
+    if (_newPassCtrl.text.length < 6) {
+      showSnack(context, 'Minimum 6 caractères', isError: true);
+      return;
+    }
     if (_newPassCtrl.text != _confirmPassCtrl.text) {
-      showSnack(
-        context,
-        'Les mots de passe ne correspondent pas',
-        isError: true,
-      );
+      showSnack(context, 'Les mots de passe ne correspondent pas', isError: true);
       return;
     }
     setState(() => _loading = true);
     try {
-      await ref.read(authServiceProvider).updatePassword(_newPassCtrl.text);
+      // Re-authenticate before updating password
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      if (firebaseUser != null && _oldPassCtrl.text.isNotEmpty) {
+        final credential = EmailAuthProvider.credential(
+          email: firebaseUser.email!,
+          password: _oldPassCtrl.text,
+        );
+        await firebaseUser.reauthenticateWithCredential(credential);
+      }
+      final authService = ref.read(authServiceProvider);
+      await authService.updatePassword(_newPassCtrl.text);
+      // Clear mustChangePassword if set
+      final user = ref.read(currentUserProvider);
+      if (user != null && user.mustChangePassword) {
+        await authService.updateUser(user.copyWith(mustChangePassword: false));
+        ref.invalidate(authStateProvider);
+      }
       if (mounted) {
         showSnack(context, 'Mot de passe modifié avec succès');
         _oldPassCtrl.clear();
         _newPassCtrl.clear();
         _confirmPassCtrl.clear();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        final msg = e.code == 'wrong-password' || e.code == 'invalid-credential'
+            ? 'Mot de passe actuel incorrect'
+            : 'Erreur: ${e.message}';
+        showSnack(context, msg, isError: true);
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
@@ -67,6 +91,31 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (user.mustChangePassword)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.warning),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Veuillez changer le mot de passe par défaut et mettre le vôtre.',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),

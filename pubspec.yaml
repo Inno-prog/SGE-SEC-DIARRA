@@ -63,6 +63,8 @@ dependencies:
   percent_indicator: ^4.2.3
   syncfusion_flutter_charts: ^27.1.48
   month_picker_dialog: ^4.0.0
+  http: ^1.6.0
+  firebase_app_check: ^0.3.2+10
 
 dev_dependencies:
   flutter_test:

@@ -15,6 +15,7 @@ class UserModel {
   final List<String> permissions;
   final bool darkMode;
   final bool emailNotifications;
+  final bool mustChangePassword;
 
   UserModel({
     required this.id,
@@ -31,6 +32,7 @@ class UserModel {
     this.permissions = const [],
     this.darkMode = false,
     this.emailNotifications = true,
+    this.mustChangePassword = false,
   });
 
   String get fullName => '$prenom $nom';
@@ -55,6 +57,7 @@ twoFactorEnabled: data['twoFactorEnabled'] ?? false,
         permissions: List<String>.from(data['permissions'] ?? []),
         darkMode: data['darkMode'] ?? false,
         emailNotifications: data['emailNotifications'] ?? true,
+        mustChangePassword: data['mustChangePassword'] ?? false,
     );
   }
 
@@ -72,6 +75,7 @@ twoFactorEnabled: data['twoFactorEnabled'] ?? false,
         'permissions': permissions,
         'darkMode': darkMode,
         'emailNotifications': emailNotifications,
+        'mustChangePassword': mustChangePassword,
       };
 
   UserModel copyWith({
@@ -85,6 +89,7 @@ twoFactorEnabled: data['twoFactorEnabled'] ?? false,
     List<String>? permissions,
     bool? darkMode,
     bool? emailNotifications,
+    bool? mustChangePassword,
   }) =>
       UserModel(
         id: id,
@@ -101,5 +106,6 @@ twoFactorEnabled: data['twoFactorEnabled'] ?? false,
         permissions: permissions ?? this.permissions,
         darkMode: darkMode ?? this.darkMode,
         emailNotifications: emailNotifications ?? this.emailNotifications,
+        mustChangePassword: mustChangePassword ?? this.mustChangePassword,
       );
 }

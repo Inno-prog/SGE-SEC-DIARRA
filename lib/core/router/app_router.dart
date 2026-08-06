@@ -72,8 +72,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       if (isLoggedIn && state.matchedLocation == AppRoutes.login) {
+        final user = authState.value;
+        if (user != null && user.mustChangePassword) {
+          return AppRoutes.security;
+        }
         final last = ref.read(lastLocationProvider);
         return last != AppRoutes.login ? last : AppRoutes.dashboard;
+      }
+
+      // Force redirect to security if mustChangePassword and not already there
+      final user = authState.value;
+      if (user != null &&
+          user.mustChangePassword &&
+          state.matchedLocation != AppRoutes.security) {
+        return AppRoutes.security;
       }
 
       if (state.matchedLocation.startsWith('/')) {

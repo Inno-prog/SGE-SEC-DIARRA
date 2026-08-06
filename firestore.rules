@@ -14,17 +14,14 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
     }
 
-    // Attendance: employees can read their own records, privileged roles can read all
+    // Attendance: all authenticated users can read, privileged roles can write
     match /attendance/{attendanceId} {
-      allow read: if request.auth != null && (
-        resource.data.employeeId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
-      );
+      allow read: if request.auth != null;
       allow create: if request.auth != null && (
         request.resource.data.employeeId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh']
       );
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service'];
+      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
     }
 
     // Conversations: only participants can read/write
@@ -64,13 +61,9 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh']);
     }
 
-    // Leaves: employees can read their own, privileged roles can read all
-    // Employees can create and modify their own leaves only if status is 'en_attente'
+    // Leaves: all authenticated users can read, employees can create/update their own
     match /leaves/{leaveId} {
-      allow read: if request.auth != null && (
-        resource.data.employeeId == request.auth.uid ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh', 'chef_service']
-      );
+      allow read: if request.auth != null;
       allow create: if request.auth != null && request.resource.data.employeeId == request.auth.uid;
       allow update: if request.auth != null && (
         (resource.data.employeeId == request.auth.uid && resource.data.statut == 'en_attente') ||
@@ -85,9 +78,7 @@ service cloud.firestore {
     // Agenda: all authenticated users can read, privileged roles can write
     match /agenda/{eventId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
-      allow update: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
-      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
+      allow create, update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'director', 'rh'];
     }
 
     // Audit logs: readable by authenticated users
