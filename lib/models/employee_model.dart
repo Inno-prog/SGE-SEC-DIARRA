@@ -48,6 +48,7 @@ class EmployeeModel {
   final String? demandeFileId;
   final String? cvFileId;
   final String? diplomeFileId;
+  final String? autresFileId;
 
   final DateTime createdAt;
   final String createdBy;
@@ -81,6 +82,7 @@ class EmployeeModel {
     this.demandeFileId,
     this.cvFileId,
     this.diplomeFileId,
+    this.autresFileId,
     required this.createdAt,
     required this.createdBy,
   });
@@ -125,6 +127,7 @@ class EmployeeModel {
       demandeFileId: d['demandeFileId'],
       cvFileId: d['cvFileId'],
       diplomeFileId: d['diplomeFileId'],
+      autresFileId: d['autresFileId'],
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdBy: d['createdBy'] ?? '',
     );
@@ -158,6 +161,7 @@ class EmployeeModel {
         'demandeFileId': demandeFileId,
         'cvFileId': cvFileId,
         'diplomeFileId': diplomeFileId,
+        'autresFileId': autresFileId,
         'createdAt': Timestamp.fromDate(createdAt),
         'createdBy': createdBy,
         'searchIndex': [
@@ -192,6 +196,7 @@ class EmployeeModel {
     String? demandeFileId,
     String? cvFileId,
     String? diplomeFileId,
+    String? autresFileId,
   }) =>
       EmployeeModel(
         id: id,
@@ -222,6 +227,7 @@ class EmployeeModel {
         demandeFileId: demandeFileId ?? this.demandeFileId,
         cvFileId: cvFileId ?? this.cvFileId,
         diplomeFileId: diplomeFileId ?? this.diplomeFileId,
+        autresFileId: autresFileId ?? this.autresFileId,
         createdAt: createdAt,
         createdBy: createdBy,
       );

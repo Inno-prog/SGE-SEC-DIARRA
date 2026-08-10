@@ -295,6 +295,7 @@ class _CommentDialogState extends State<_CommentDialog> {
         maxLines: 3,
       ),
       actions: [
+          NotificationBell(),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Annuler'),

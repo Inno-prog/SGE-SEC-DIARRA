@@ -203,6 +203,16 @@ class FirestoreService {
     await _db.collection(AppConstants.colContracts).doc(id).delete();
   }
 
+  Future<List<ContractModel>> getContractsExpiringSoon() async {
+    final thirtyDaysFromNow = DateTime.now().add(const Duration(days: 30));
+    final snap = await _db
+        .collection(AppConstants.colContracts)
+        .where('dateFin', isLessThanOrEqualTo: Timestamp.fromDate(thirtyDaysFromNow))
+        .where('dateFin', isGreaterThan: Timestamp.fromDate(DateTime.now()))
+        .get();
+    return snap.docs.map(ContractModel.fromFirestore).toList();
+  }
+
   // ─── Attendance ──────────────────────────────────────────────────────────────
   Stream<List<AttendanceModel>> watchAttendance({
     DateTime? date,
@@ -610,6 +620,34 @@ class FirestoreService {
       batch.update(doc.reference, {'isRead': true});
     }
     await batch.commit();
+  }
+
+  Future<void> addContractExpiryNotification({
+    required String userId,
+    required String contractId,
+    required String titre,
+    required String message,
+    String? actionRoute,
+  }) async {
+    final existing = await _db
+        .collection(AppConstants.colNotifications)
+        .where('userId', isEqualTo: userId)
+        .where('contractId', isEqualTo: contractId)
+        .where('isRead', isEqualTo: false)
+        .limit(1)
+        .get();
+    if (existing.docs.isEmpty) {
+      await addNotification(NotificationModel(
+        id: '',
+        userId: userId,
+        titre: titre,
+        message: message,
+        type: 'contract_expiry',
+        actionRoute: actionRoute,
+        contractId: contractId,
+        createdAt: DateTime.now(),
+      ));
+    }
   }
 
   // ─── Messages ────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ class SchedulesScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Horaires de travail'),
+        actions: [NotificationBell()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),

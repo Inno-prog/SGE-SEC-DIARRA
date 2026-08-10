@@ -56,10 +56,12 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
   dynamic _demandeFile;
   dynamic _cvFile;
   dynamic _diplomeFile;
+  dynamic _autresFile;
   String? _contratSigneName;
   String? _demandeName;
   String? _cvName;
   String? _diplomeName;
+  String? _autresName;
 
   EmployeeModel? _existing;
 
@@ -165,6 +167,9 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       'diplome': [
         XTypeGroup(extensions: ['pdf']),
       ],
+      'autres': [
+        XTypeGroup(extensions: ['pdf']),
+      ],
     };
     final file = await openFile(
       acceptedTypeGroups:
@@ -195,6 +200,10 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
             _diplomeFile = bytes;
             _diplomeName = name;
             break;
+          case 'autres':
+            _autresFile = bytes;
+            _autresName = name;
+            break;
         }
       });
     } else {
@@ -215,6 +224,10 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
           case 'diplome':
             _diplomeFile = File(file.path);
             _diplomeName = name;
+            break;
+          case 'autres':
+            _autresFile = File(file.path);
+            _autresName = name;
             break;
         }
       });
@@ -284,6 +297,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       String? demandeFileId = _existing?.demandeFileId;
       String? cvFileId = _existing?.cvFileId;
       String? diplomeFileId = _existing?.diplomeFileId;
+      String? autresFileId = _existing?.autresFileId;
 
       final matricule =
           _existing?.matricule ?? await service.generateMatricule();
@@ -364,6 +378,22 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         );
       }
 
+      if (_autresFile != null) {
+        uploads.add(
+          _uploadWithRetry(
+            () async {
+              final fileId = await service.uploadDocument(
+                _autresFile!,
+                '${AppConstants.storageDocuments}/$matricule/autres.pdf',
+              );
+              autresFileId = fileId;
+            },
+            3,
+            'autres',
+          ),
+        );
+      }
+
       try {
         if (mounted)
           showSnack(
@@ -417,6 +447,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         demandeFileId: demandeFileId,
         cvFileId: cvFileId,
         diplomeFileId: diplomeFileId,
+        autresFileId: autresFileId,
       );
 
       if (_existing != null) {
@@ -492,6 +523,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
           widget.employeeId == null ? 'Nouvel employé' : 'Modifier l\'employé',
         ),
         actions: [
+          NotificationBell(),
           TextButton(
             onPressed: _loading ? null : () => context.go(AppRoutes.employees),
             child: const Text(
@@ -714,6 +746,12 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
                   label: 'Diplôme',
                   fileName: _diplomeName,
                   onPick: () => _pickPdf('diplome'),
+                ),
+                const SizedBox(height: 8),
+                _DocUploadTile(
+                  label: 'Autres (imprévus)',
+                  fileName: _autresName,
+                  onPick: () => _pickPdf('autres'),
                 ),
               ],
             ),

@@ -125,6 +125,7 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
       appBar: AppBar(
         title: const Text('Gestion de la paie'),
         actions: [
+          NotificationBell(),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _showPayrollForm(context),
@@ -405,6 +406,7 @@ class _PayrollTile extends ConsumerWidget {
             ],
           ),
           actions: [
+          NotificationBell(),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
               child: const Text('Fermer'),

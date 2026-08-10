@@ -33,6 +33,7 @@ class AttendanceScreen extends ConsumerWidget {
         ),
         title: const Text('Présences'),
         actions: [
+          NotificationBell(),
           if (canPoint)
             IconButton(
               icon: const Icon(Icons.qr_code_scanner),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../models/user_model.dart';
@@ -49,6 +50,31 @@ final ensureEmployeeIdProvider = FutureProvider<void>((ref) async {
   ref.invalidate(authStateProvider);
 });
 
+// Checks expiring contracts and creates notifications (once per contract)
+final contractExpiryNotifierProvider = FutureProvider<void>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return;
+  final isPrivileged = [
+    AppConstants.roleAdmin,
+    AppConstants.roleRH,
+    AppConstants.roleDirector,
+  ].contains(user.role);
+  if (!isPrivileged) return;
+  final service = ref.watch(firestoreServiceProvider);
+  final expiring = await service.getContractsExpiringSoon();
+  for (final contract in expiring) {
+    if (contract.dateFin == null) continue;
+    final daysLeft = contract.dateFin!.difference(DateTime.now()).inDays;
+    await service.addContractExpiryNotification(
+      userId: user.id,
+      contractId: contract.id,
+      titre: 'Contrat expirant bientôt',
+      message: 'Le contrat de ${contract.employeeNom} expire dans $daysLeft jour(s)',
+      actionRoute: AppRoutes.contracts,
+    );
+  }
+});
+
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 final dashboardStatsProvider = FutureProvider<Map<String, int>>((ref) {
   return ref.watch(firestoreServiceProvider).getDashboardStats();
@@ -72,16 +98,25 @@ final allEmployeesProvider = StreamProvider<List<EmployeeModel>>((ref) {
 
 final employeeSearchProvider = StateProvider<String>((ref) => '');
 
+final departmentFilterProvider = StateProvider<String?>((ref) => null);
+
 final filteredEmployeesProvider = Provider<AsyncValue<List<EmployeeModel>>>((ref) {
   final query = ref.watch(employeeSearchProvider).toLowerCase();
+  final deptId = ref.watch(departmentFilterProvider);
   final employees = ref.watch(allEmployeesProvider);
-  if (query.isEmpty) return employees;
   return employees.whenData(
-    (list) => list.where((e) =>
-        e.fullName.toLowerCase().contains(query) ||
-        e.matricule.toLowerCase().contains(query) ||
-        e.departementNom.toLowerCase().contains(query) ||
-        e.poste.toLowerCase().contains(query)).toList(),
+    (list) {
+      var filtered = list;
+      if (deptId != null) {
+        filtered = filtered.where((e) => e.departementId == deptId).toList();
+      }
+      if (query.isEmpty) return filtered;
+      return filtered.where((e) =>
+          e.fullName.toLowerCase().contains(query) ||
+          e.matricule.toLowerCase().contains(query) ||
+          e.departementNom.toLowerCase().contains(query) ||
+          e.poste.toLowerCase().contains(query)).toList();
+    },
   );
 });
 
@@ -104,6 +139,31 @@ final expiringContractsProvider = Provider<AsyncValue<List<ContractModel>>>((ref
   return ref.watch(contractsProvider(null)).whenData(
         (list) => list.where((c) => c.isExpiringSoon).toList(),
       );
+});
+
+final contractExpiryNotificationsProvider = Provider<AsyncValue<List<NotificationModel>>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const AsyncValue.data([]);
+  final allNotifications = ref.watch(notificationsProvider);
+  return allNotifications.whenData(
+    (list) => list.where((n) => n.type == 'contract_expiry' && !n.isRead).toList(),
+  );
+});
+
+final syncContractExpiryNotificationsProvider = FutureProvider<void>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return;
+  final service = ref.watch(firestoreServiceProvider);
+  final contracts = await service.getContractsExpiringSoon();
+  for (final c in contracts) {
+    await service.addContractExpiryNotification(
+      userId: user.id,
+      contractId: c.id,
+      titre: 'Contrat expirant bientôt',
+      message: 'Le contrat de ${c.employeeNom} expire le ${DateFormat('dd/MM/yyyy').format(c.dateFin!)}',
+      actionRoute: AppRoutes.contracts,
+    );
+  }
 });
 
 // ─── Attendance ──────────────────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/providers.dart';
+import '../widgets/common_widgets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../core/constants/app_constants.dart';
@@ -165,14 +166,13 @@ class _WideLayout extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
-    final unread = ref.watch(unreadNotificationsCountProvider);
 
     return Scaffold(
       body: Row(
         children: [
           SizedBox(
             width: 220,
-            child: _SideNav(currentLocation: location, unreadCount: unread),
+            child: _SideNav(currentLocation: location),
           ),
           Expanded(child: child),
         ],
@@ -183,7 +183,7 @@ class _WideLayout extends ConsumerWidget {
 
 class _NarrowLayout extends ConsumerWidget {
   final Widget child;
-  const _NarrowLayout({required this.child});
+  const _NarrowLayout({super.key, required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -191,7 +191,7 @@ class _NarrowLayout extends ConsumerWidget {
     return Scaffold(
       key: key,
       drawer: Drawer(
-        child: _SideNav(currentLocation: GoRouterState.of(context).matchedLocation, unreadCount: 0),
+        child: _SideNav(currentLocation: GoRouterState.of(context).matchedLocation),
       ),
       body: child,
     );
@@ -200,8 +200,7 @@ class _NarrowLayout extends ConsumerWidget {
 
 class _SideNav extends ConsumerWidget {
   final String currentLocation;
-  final int unreadCount;
-  const _SideNav({required this.currentLocation, required this.unreadCount});
+  const _SideNav({required this.currentLocation});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -353,7 +352,6 @@ class _SideNav extends ConsumerWidget {
       _NavItemData(Icons.assessment_outlined, 'Évaluations', AppRoutes.evaluations),
       _NavItemData(Icons.folder_outlined, 'Documents', AppRoutes.documents),
       _NavItemData(Icons.person_search_outlined, 'Recrutement', AppRoutes.recruitment),
-      _NavItemData(Icons.notifications_outlined, 'Notifications', AppRoutes.notifications, badge: unreadCount > 0 ? unreadCount.toString() : null),
       _NavItemData(Icons.chat_outlined, 'Messagerie', AppRoutes.messaging),
       _NavItemData(Icons.calendar_month_outlined, 'Agenda', AppRoutes.agenda),
       _NavItemData(Icons.bar_chart_outlined, 'Rapports', AppRoutes.reports),
@@ -377,7 +375,7 @@ class _SideNav extends ConsumerWidget {
       _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
       _NavGroup(Icons.fact_check_outlined, 'Suivi & Discipline', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.sanctions])),
       _NavGroup(Icons.payments_outlined, 'Rémunération & Développement', filter([AppRoutes.payroll, AppRoutes.bonuses, AppRoutes.trainings, AppRoutes.evaluations, AppRoutes.documents, AppRoutes.recruitment])),
-      _NavGroup(Icons.forum_outlined, 'Communication & Administration', filter([AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
+      _NavGroup(Icons.forum_outlined, 'Communication & Administration', filter([AppRoutes.messaging, AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
     ];
 
     switch (role) {
@@ -385,12 +383,12 @@ class _SideNav extends ConsumerWidget {
         return groups
             .where((g) => g.items.any((i) => [
                   AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
-                  AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.messaging, AppRoutes.agenda,
                   AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)))
             .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
                   AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
-                  AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.messaging, AppRoutes.agenda,
                   AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)).toList()))
             .toList();
@@ -400,13 +398,13 @@ class _SideNav extends ConsumerWidget {
             .where((g) => g.items.any((i) => [
                   AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
                   AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
-                  AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.messaging, AppRoutes.agenda,
                   AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)))
             .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
                   AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
                   AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
-                  AppRoutes.notifications, AppRoutes.messaging, AppRoutes.agenda,
+                  AppRoutes.messaging, AppRoutes.agenda,
                   AppRoutes.settings, AppRoutes.security,
                 ].contains(i.route)).toList()))
             .toList();

@@ -5,6 +5,7 @@ import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/department_model.dart';
+import '../../models/employee_model.dart';
 
 class DepartmentsScreen extends ConsumerWidget {
   const DepartmentsScreen({super.key});
@@ -19,6 +20,7 @@ class DepartmentsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Départements'),
+        actions: [NotificationBell()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),
@@ -91,6 +93,7 @@ class _DeptCard extends ConsumerWidget {
             ),
           ],
         ),
+        onTap: () => _showEmployees(context, dept),
         trailing: PopupMenuButton<String>(
           onSelected: (v) async {
             if (v == 'edit') {
@@ -137,6 +140,131 @@ class _DeptCard extends ConsumerWidget {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEmployees(BuildContext context, DepartmentModel dept) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _DeptEmployeesScreen(dept: dept),
+      ),
+    );
+  }
+}
+
+class _DeptEmployeesScreen extends ConsumerWidget {
+  final DepartmentModel dept;
+  const _DeptEmployeesScreen({required this.dept});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final all = ref.watch(allEmployeesProvider);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(dept.nom),
+        actions: [NotificationBell()],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddEmployee(context, ref, all.value ?? []),
+        icon: const Icon(Icons.person_add_outlined),
+        label: const Text('Ajouter un employé'),
+      ),
+      body: all.when(
+        data: (list) {
+          final filtered = list.where((e) => e.departementId == dept.id).toList();
+          return filtered.isEmpty
+              ? const EmptyState(
+                  message: 'Aucun employé dans ce département',
+                  icon: Icons.people_outline,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final e = filtered[i];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: EmployeeAvatar(name: e.fullName, photoUrl: e.photoUrl),
+                        title: Text(e.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text('${e.poste} • ${e.statut}'),
+                        trailing: StatusBadge(status: e.statut),
+                      ),
+                    );
+                  },
+                );
+        },
+        loading: () => const LoadingWidget(),
+        error: (e, _) => Center(child: Text('$e')),
+      ),
+    );
+  }
+
+  void _showAddEmployee(BuildContext context, WidgetRef ref, List<EmployeeModel> existing) {
+    final others = existing.where((e) => e.departementId != dept.id).toList();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AddEmployeeToDeptSheet(dept: dept, available: others),
+    );
+  }
+}
+
+class _AddEmployeeToDeptSheet extends ConsumerWidget {
+  final DepartmentModel dept;
+  final List<EmployeeModel> available;
+  const _AddEmployeeToDeptSheet({required this.dept, required this.available});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      builder: (_, ctrl) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Ajouter au département ${dept.nom}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Divider(),
+            if (available.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('Aucun employé disponible')),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  controller: ctrl,
+                  itemCount: available.length,
+                  itemBuilder: (_, i) {
+                    final e = available[i];
+                    return ListTile(
+                      leading: EmployeeAvatar(name: e.fullName, photoUrl: e.photoUrl),
+                      title: Text(e.fullName),
+                      subtitle: Text(e.poste),
+                      trailing: const Icon(Icons.add_circle_outline, color: AppColors.primary),
+                      onTap: () async {
+                        await ref.read(firestoreServiceProvider).updateEmployee(
+                          e.copyWith(departementId: dept.id, departementNom: dept.nom),
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          showSnack(context, '${e.fullName} ajouté au département');
+                        }
+                      },
+                    );
+                  },
+                ),
+              ),
           ],
         ),
       ),

@@ -28,6 +28,7 @@ class EmployeesScreen extends ConsumerWidget {
         ),
         title: const Text('Employés'),
         actions: [
+          NotificationBell(),
           if (canEdit)
             IconButton(
               icon: const Icon(Icons.add),

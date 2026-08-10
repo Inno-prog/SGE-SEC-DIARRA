@@ -630,6 +630,7 @@ class NotificationModel {
   final String type;
   final bool isRead;
   final String? actionRoute;
+  final String? contractId;
   final DateTime createdAt;
 
   NotificationModel({
@@ -640,6 +641,7 @@ class NotificationModel {
     required this.type,
     this.isRead = false,
     this.actionRoute,
+    this.contractId,
     required this.createdAt,
   });
 
@@ -653,6 +655,7 @@ class NotificationModel {
       type: d['type'] ?? '',
       isRead: d['isRead'] ?? false,
       actionRoute: d['actionRoute'],
+      contractId: d['contractId'],
       createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
   }
@@ -664,6 +667,7 @@ class NotificationModel {
         'type': type,
         'isRead': isRead,
         'actionRoute': actionRoute,
+        'contractId': contractId,
         'createdAt': Timestamp.fromDate(createdAt),
       };
 }

@@ -21,6 +21,7 @@ class ContractsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Contrats'),
+        actions: [NotificationBell()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),

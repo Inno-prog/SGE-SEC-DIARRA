@@ -20,6 +20,7 @@ class RecruitmentScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Recrutement'),
+        actions: [NotificationBell()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),

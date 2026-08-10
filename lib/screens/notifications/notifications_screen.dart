@@ -7,6 +7,7 @@ import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
+import '../../services/auth_service.dart';
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 class NotificationsScreen extends ConsumerWidget {
@@ -23,6 +24,7 @@ class NotificationsScreen extends ConsumerWidget {
         ),
         title: const Text('Notifications'),
         actions: [
+          NotificationBell(),
           TextButton(
             onPressed: () {
               final user = ref.read(currentUserProvider)!;
@@ -816,20 +818,32 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
         _heureFin.hour,
         _heureFin.minute,
       );
-      await ref
-          .read(firestoreServiceProvider)
-          .addAgendaEvent(
-            AgendaModel(
-              id: '',
-              titre: _titreCtrl.text.trim(),
-              description: _descCtrl.text.trim(),
-              type: _type,
-              dateDebut: dateDebut,
-              dateFin: dateFin,
-              createdBy: user.id,
-              createdAt: DateTime.now(),
-            ),
-          );
+      final service = ref.read(firestoreServiceProvider);
+      await service.addAgendaEvent(
+        AgendaModel(
+          id: '',
+          titre: _titreCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          type: _type,
+          dateDebut: dateDebut,
+          dateFin: dateFin,
+          createdBy: user.id,
+          createdAt: DateTime.now(),
+        ),
+      );
+      // Notify all users about the new agenda event
+      final allUsers = await ref.read(authServiceProvider).watchAllUsers().first;
+      for (final u in allUsers) {
+        if (u.id == user.id) continue;
+        await service.addNotification(NotificationModel(
+          id: '',
+          userId: u.id,
+          titre: 'Nouvel événement : ${_titreCtrl.text.trim()}',
+          message: 'Le ${DateFormat('dd/MM/yyyy').format(dateDebut)} de ${_heureDebut.format(context)} à ${_heureFin.format(context)}',
+          type: 'agenda',
+          createdAt: DateTime.now(),
+        ));
+      }
       ref.invalidate(agendaProvider);
       if (mounted) {
         Navigator.pop(context);

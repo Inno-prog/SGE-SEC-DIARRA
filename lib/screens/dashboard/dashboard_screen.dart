@@ -34,46 +34,18 @@ class _AdminDashboard extends ConsumerWidget {
     final pendingLeaves = ref.watch(pendingLeavesProvider);
     final expiringContracts = ref.watch(expiringContractsProvider);
 
+    final prenom = ref.watch(currentUserProvider)?.prenom ?? '';
     return Scaffold(
+      appBar: _GradientAppBar(
+        prenom: prenom,
+        onMenuTap: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
+      ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(top: 0),
           child: Column(
             children: [
-              // Welcome header
-              Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} ',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      DateFormat(
-                        'EEEE d MMMM yyyy',
-                        'fr_FR',
-                      ).format(DateTime.now()),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Stats Grid
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: stats.when(
@@ -137,14 +109,11 @@ class _RHDashboard extends ConsumerWidget {
     final pendingLeaves = ref.watch(pendingLeavesProvider);
     final expiringContracts = ref.watch(expiringContractsProvider);
 
+    final prenom = ref.watch(currentUserProvider)?.prenom ?? '';
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () =>
-              ref.read(drawerKeyProvider).currentState?.openDrawer(),
-        ),
-        title: Text('Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''}'),
+      appBar: _GradientAppBar(
+        prenom: prenom,
+        onMenuTap: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
       ),
       body: RefreshIndicator(
         onRefresh: () async => ref.invalidate(dashboardStatsProvider),
@@ -152,37 +121,6 @@ class _RHDashboard extends ConsumerWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
-              // Welcome header
-              Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                ),
-                padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Espace RH, ${ref.watch(currentUserProvider)?.prenom ?? ''} ',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      DateFormat(
-                        'EEEE d MMMM yyyy',
-                        'fr_FR',
-                      ).format(DateTime.now()),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               // Stats Grid (sans les indicateurs financiers)
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -580,19 +518,9 @@ class _ChefServiceDashboard extends ConsumerWidget {
     final pendingLeaves = ref.watch(pendingLeavesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () =>
-              ref.read(drawerKeyProvider).currentState?.openDrawer(),
-        ),
-        title: Text('Bonjour, ${user.prenom}'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.go(AppRoutes.notifications),
-          ),
-        ],
+      appBar: _GradientAppBar(
+        prenom: user.prenom,
+        onMenuTap: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -656,13 +584,9 @@ class _EmployeeDashboard extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.menu),
-          onPressed: () =>
-              ref.read(drawerKeyProvider).currentState?.openDrawer(),
-        ),
-        title: Text('Bonjour, ${user.prenom}'),
+      appBar: _GradientAppBar(
+        prenom: user.prenom,
+        onMenuTap: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
       ),
       body: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -780,6 +704,57 @@ class _LeaveCard extends StatelessWidget {
           ),
           StatusBadge(status: leave.statut),
         ],
+      ),
+    );
+  }
+}
+
+class _GradientAppBar extends ConsumerWidget implements PreferredSizeWidget {
+  final String prenom;
+  final VoidCallback onMenuTap;
+  const _GradientAppBar({required this.prenom, required this.onMenuTap});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(72);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+      child: SafeArea(
+        child: SizedBox(
+          height: 72,
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: onMenuTap,
+              ),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bonjour, $prenom',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('EEEE d MMMM yyyy', 'fr_FR').format(DateTime.now()),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              NotificationBell(),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ),
       ),
     );
   }

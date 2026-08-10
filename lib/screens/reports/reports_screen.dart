@@ -34,6 +34,7 @@ class ReportsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Rapports'),
+        actions: [NotificationBell()],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

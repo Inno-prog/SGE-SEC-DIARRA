@@ -21,6 +21,7 @@ class SanctionsScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Sanctions'),
+        actions: [NotificationBell()],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showForm(context, ref),

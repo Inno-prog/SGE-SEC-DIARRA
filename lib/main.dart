@@ -116,7 +116,7 @@ class _EmployeeIdFixer extends ConsumerWidget {
         data: (_) => debugPrint('employeeId fix applied'),
       );
     });
-
+    ref.listen<AsyncValue<void>>(contractExpiryNotifierProvider, (_, __) {});
     return child;
   }
 }
