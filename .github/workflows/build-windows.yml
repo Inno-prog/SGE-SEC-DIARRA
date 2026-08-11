@@ -1,4 +1,4 @@
-name: Build Windows Release
+name: Build Windows EXE
 
 on:
   push:
@@ -21,35 +21,12 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Clean build cache
-        run: flutter clean
-
-      - name: Build Windows release
+      - name: Build Windows EXE
         run: flutter build windows --release
 
-      - name: Package installer with NSIS
-        run: |
-          choco install nsis -y --no-progress
-          $env:PATH += ";C:\Program Files (x86)\NSIS"
-          $exe = Get-ChildItem -Recurse build\windows\x64\ -Filter *.exe | Select-Object -First 1 -ExpandProperty FullName
-          Write-Host "Found EXE: $exe"
-          $script = @"
-          OutFile "sge_secdiarra-installer.exe"
-          InstallDir "`$PROGRAMFILES\SGE Secdiarra"
-          Page directory
-          Page instfiles
-          Section "Install"
-            SetOutPath "`$INSTDIR"
-            File "$exe"
-            CreateShortCut "`$DESKTOP\SGE Secdiarra.lnk" "`$INSTDIR\$(basename "$exe")"
-          SectionEnd
-          "@
-          Set-Content -Path installer.nsi -Value $script
-          & "C:\Program Files (x86)\NSIS\makensis.exe" installer.nsi
-
-      - name: Upload Windows installer artifact
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
-          name: sge_secdiarra-windows-installer
-          path: sge_secdiarra-installer.exe
+          name: sge-secdiarra-windows-exe
+          path: build/windows/x64/release/runner/Release/
           retention-days: 14
