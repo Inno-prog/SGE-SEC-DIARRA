@@ -44,10 +44,13 @@ final drawerKeyProvider = Provider<GlobalKey<ScaffoldState>>((ref) {
 
 final ensureEmployeeIdProvider = FutureProvider<void>((ref) async {
   final user = ref.watch(currentUserProvider);
-  if (user == null || user.employeeId != null) return;
-  final auth = ref.watch(authServiceProvider);
-  await auth.updateUser(user.copyWith(employeeId: user.id));
-  ref.invalidate(authStateProvider);
+  if (user == null || (user.employeeId != null && user.employeeId!.isNotEmpty)) return;
+  final auth = ref.read(authServiceProvider);
+  try {
+    await auth.updateUser(user.copyWith(employeeId: user.id));
+  } catch (e) {
+    debugPrint('ensureEmployeeId failed: $e');
+  }
 });
 
 // Checks expiring contracts and creates notifications (once per contract)

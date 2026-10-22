@@ -90,29 +90,39 @@ class _LocationSaver extends ConsumerWidget {
   }
 }
 
-class _ThemeSaver extends ConsumerWidget {
+class _ThemeSaver extends ConsumerStatefulWidget {
   final Widget child;
   const _ThemeSaver({required this.child});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ThemeSaver> createState() => _ThemeSaverState();
+}
+
+class _ThemeSaverState extends ConsumerState<_ThemeSaver> {
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getInt('theme_mode');
+    if (saved != null && saved >= 0 && saved <= 2) {
+      final mode = ThemeMode.values[saved];
+      if (mounted && mode != ref.read(themeModeProvider)) {
+        ref.read(themeModeProvider.notifier).state = mode;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     ref.listen<ThemeMode>(themeModeProvider, (previous, next) async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt('theme_mode', next.index);
     });
-
-    Future<void>.microtask(() async {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getInt('theme_mode');
-      if (saved != null && saved >= 0 && saved <= 2) {
-        final mode = ThemeMode.values[saved];
-        if (mode != ref.read(themeModeProvider)) {
-          ref.read(themeModeProvider.notifier).state = mode;
-        }
-      }
-    });
-
-    return child;
+    return widget.child;
   }
 }
 
@@ -125,7 +135,6 @@ class _EmployeeIdFixer extends ConsumerWidget {
     ref.listen<AsyncValue<void>>(ensureEmployeeIdProvider, (previous, next) {
       next.whenOrNull(
         error: (e, _) => debugPrint('employeeId fix failed: $e'),
-        data: (_) => debugPrint('employeeId fix applied'),
       );
     });
     ref.listen<AsyncValue<void>>(contractExpiryNotifierProvider, (_, __) {});

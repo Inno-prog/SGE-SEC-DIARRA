@@ -48,9 +48,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         final last = ref.read(lastLocationProvider);
         context.go(last != AppRoutes.login ? last : AppRoutes.dashboard);
       }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final message = switch (e.code) {
+        'too-many-requests' =>
+          'Trop de tentatives (Erreur 429). L\'accès est temporairement bloqué par Firebase. Patientez quelques minutes ou réinitialisez votre mot de passe.',
+        'user-not-found' || 'wrong-password' || 'invalid-credential' =>
+          'Email ou mot de passe incorrect.',
+        'user-disabled' => 'Ce compte a été désactivé.',
+        'network-request-failed' => 'Problème de connexion réseau avec Firebase.',
+        _ => e.message ?? 'Erreur d\'authentification (${e.code})',
+      };
+      showSnack(context, message, isError: true);
     } catch (e) {
       if (mounted)
-        showSnack(context, 'Email ou mot de passe incorrect', isError: true);
+        showSnack(context, 'Erreur de connexion: $e', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }

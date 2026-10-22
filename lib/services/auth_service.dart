@@ -7,7 +7,6 @@ import '../firebase_options.dart';
 import '../models/user_model.dart';
 import '../core/constants/app_constants.dart';
 
-const _apiKey = 'AIzaSyC-CFwiuRIl4TCQNy-z7JZgyNAYADPyGS8';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -67,45 +66,52 @@ class AuthService {
     required String role,
     String? employeeId,
   }) async {
-    // Use a secondary Firebase app to avoid signing out the current admin
-    FirebaseApp? secondaryApp;
-    try {
-      secondaryApp = await Firebase.initializeApp(
-        name: 'secondary_${DateTime.now().millisecondsSinceEpoch}',
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-      final secondaryAuth = FirebaseAuth.instanceFor(app: secondaryApp);
-      final cred = await secondaryAuth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      final uid = cred.user!.uid;
-      // Sign in with secondary to get idToken, then link password provider
-      // so sendPasswordResetEmail works correctly
-      final idToken = await cred.user!.getIdToken();
-      await http.post(
-        Uri.parse('https://identitytoolkit.googleapis.com/v1/accounts:update?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'idToken': idToken, 'returnSecureToken': false}),
-      );
-      await secondaryAuth.signOut();
-      final user = UserModel(
-        id: uid,
-        email: email,
-        nom: nom,
-        prenom: prenom,
-        role: role,
-        employeeId: employeeId ?? uid,
-        createdAt: DateTime.now(),
-        darkMode: false,
-        emailNotifications: true,
-        mustChangePassword: true,
-      );
-      await _db.collection(AppConstants.colUsers).doc(uid).set(user.toFirestore());
-      return user;
-    } finally {
-      await secondaryApp?.delete();
+    final apiKey = DefaultFirebaseOptions.currentPlatform.apiKey;
+    final signUpUri = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey',
+    );
+
+    final res = await http.post(
+      signUpUri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'email': email,
+        'password': password,
+        'returnSecureToken': true,
+      }),
+    );
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode != 200) {
+      final code = data['error']?['message'] as String? ?? 'unknown';
+      final message = switch (code) {
+        'EMAIL_EXISTS' => 'Cette adresse email est déjà utilisée par un autre compte.',
+        'OPERATION_NOT_ALLOWED' => 'La création de compte par mot de passe n\'est pas activée.',
+        'TOO_MANY_ATTEMPTS_TRY_LATER' => 'Trop de requêtes. Veuillez patienter avant de réessayer.',
+        'WEAK_PASSWORD : Password should be at least 6 characters' =>
+          'Le mot de passe doit comporter au moins 6 caractères.',
+        _ => data['error']?['message'] ?? 'Erreur lors de la création de l\'utilisateur ($code)',
+      };
+      throw FirebaseAuthException(code: code, message: message);
     }
+
+    final uid = data['localId'] as String;
+
+    final user = UserModel(
+      id: uid,
+      email: email,
+      nom: nom,
+      prenom: prenom,
+      role: role,
+      employeeId: employeeId ?? uid,
+      createdAt: DateTime.now(),
+      darkMode: false,
+      emailNotifications: true,
+      mustChangePassword: true,
+    );
+
+    await _db.collection(AppConstants.colUsers).doc(uid).set(user.toFirestore());
+    return user;
   }
 
   Future<void> updatePassword(String newPassword) async {
@@ -113,19 +119,24 @@ class AuthService {
   }
 
   Future<void> sendPasswordReset(String email) async {
-    final uri = Uri.parse(
-        'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$_apiKey');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'requestType': 'PASSWORD_RESET', 'email': email}),
-    );
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body);
-      throw FirebaseAuthException(
-        code: error['error']['message'] ?? 'unknown',
-        message: error['error']['message'],
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (_) {
+      final currentApiKey = DefaultFirebaseOptions.currentPlatform.apiKey;
+      final uri = Uri.parse(
+          'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$currentApiKey');
+      final response = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'requestType': 'PASSWORD_RESET', 'email': email}),
       );
+      if (response.statusCode != 200) {
+        final error = jsonDecode(response.body);
+        throw FirebaseAuthException(
+          code: error['error']['message'] ?? 'unknown',
+          message: error['error']['message'],
+        );
+      }
     }
   }
 

@@ -1249,7 +1249,10 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         _confirmPassCtrl.clear();
       }
     } catch (e) {
-      if (mounted) showSnack(context, 'Erreur: $e', isError: true);
+      if (mounted) {
+        final message = e is FirebaseAuthException ? (e.message ?? e.code) : '$e';
+        showSnack(context, message, isError: true);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -1502,7 +1505,16 @@ class _UserTile extends ConsumerWidget {
             ),
             PopupMenuButton<String>(
               onSelected: (v) async {
-                if (v == 'toggle') {
+                if (v == 'edit') {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) => _UserForm(user: user),
+                  );
+                } else if (v == 'toggle') {
                   await ref
                       .read(authServiceProvider)
                       .updateUser(user.copyWith(isActive: !user.isActive));
@@ -1527,6 +1539,16 @@ class _UserTile extends ConsumerWidget {
                 }
               },
               itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined, size: 18),
+                      SizedBox(width: 8),
+                      Text('Modifier'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'toggle',
                   child: Text(user.isActive ? 'Désactiver' : 'Activer'),
@@ -1614,7 +1636,10 @@ class _UserFormState extends ConsumerState<_UserForm> {
         showSnack(context, 'Utilisateur enregistré');
       }
     } catch (e) {
-      if (mounted) showSnack(context, 'Erreur: $e', isError: true);
+      if (mounted) {
+        final message = e is FirebaseAuthException ? (e.message ?? e.code) : '$e';
+        showSnack(context, message, isError: true);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
