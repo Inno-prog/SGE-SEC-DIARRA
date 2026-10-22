@@ -57,10 +57,11 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: '<YOUR_WINDOWS_API_KEY>',
-    appId: '<YOUR_WINDOWS_APP_ID>',
+    apiKey: 'AIzaSyAdup-JatLVH_kcpNLrk5OhnpriV6Svc40',
+    appId: '1:223201246269:web:598dc9a748abf4094afe54',
     messagingSenderId: '223201246269',
     projectId: 'sge-sec-diarra',
+    authDomain: 'sge-sec-diarra.firebaseapp.com',
     storageBucket: 'sge-sec-diarra.firebasestorage.app',
   );
 

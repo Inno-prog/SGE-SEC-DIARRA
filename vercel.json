@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "buildCommand": "if [ -d \"_flutter\" ]; then cd _flutter && git pull && cd ..; else git clone -b stable --depth 1 https://github.com/flutter/flutter.git _flutter; fi && ./_flutter/bin/flutter build web --release",
+  "outputDirectory": "build/web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        }
+      ]
+    }
+  ]
+}
+

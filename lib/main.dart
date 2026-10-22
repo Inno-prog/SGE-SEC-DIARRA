@@ -20,7 +20,9 @@ Future<void> main() async {
   } catch (e) {
     // Firebase already initialized (e.g., by google-services.json plugin on Android)
   }
-  if (kDebugMode) {
+  if (kIsWeb) {
+    // App Check non activé sur web (nécessite domaine enregistré dans Firebase Console)
+  } else if (kDebugMode) {
     await FirebaseAppCheck.instance.activate(
       androidProvider: AndroidProvider.debug,
       appleProvider: AppleProvider.debug,
@@ -31,12 +33,14 @@ Future<void> main() async {
       appleProvider: AppleProvider.deviceCheck,
     );
   }
-  try {
-    await FirebaseFirestore.instance.enablePersistence(
-      const PersistenceSettings(synchronizeTabs: true),
-    );
-  } catch (e) {
-    // Persistence already enabled or not supported on this platform
+  if (!kIsWeb) {
+    try {
+      await FirebaseFirestore.instance.enablePersistence(
+        const PersistenceSettings(synchronizeTabs: true),
+      );
+    } catch (e) {
+      // Persistence already enabled or not supported on this platform
+    }
   }
   await initializeDateFormatting('fr_FR', null);
   runApp(
