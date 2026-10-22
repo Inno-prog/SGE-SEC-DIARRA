@@ -18,21 +18,14 @@ import '../../screens/contracts/contract_detail_screen.dart';
 import '../../screens/attendance/attendance_screen.dart';
 import '../../screens/leaves/leaves_screen.dart';
 import '../../screens/absences/absences_screen.dart';
-import '../../screens/payroll/payroll_screen.dart';
-import '../../screens/sanctions/sanctions_screen.dart';
 import '../../screens/trainings/trainings_screen.dart';
-import '../../screens/evaluations/evaluations_screen.dart';
-import '../../screens/documents/documents_screen.dart';
-import '../../screens/recruitment/recruitment_screen.dart';
 import '../../screens/users/users_screen.dart';
 import '../../screens/notifications/notifications_screen.dart';
-import '../../screens/messaging/messaging_screen.dart';
 import '../../screens/agenda/agenda_screen.dart';
 import '../../screens/reports/reports_screen.dart' hide SettingsScreen, SecurityScreen;
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/security/security_screen.dart';
 import '../../screens/schedules/schedules_screen.dart';
-import '../../screens/bonuses/bonuses_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -127,21 +120,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppRoutes.attendance, builder: (_, __) => const AttendanceScreen()),
           GoRoute(path: AppRoutes.leaves, builder: (_, __) => const LeavesScreen()),
           GoRoute(path: AppRoutes.absences, builder: (_, __) => const AbsencesScreen()),
-          GoRoute(path: AppRoutes.payroll, builder: (_, __) => const PayrollScreen()),
-          GoRoute(path: AppRoutes.sanctions, builder: (_, __) => const SanctionsScreen()),
           GoRoute(path: AppRoutes.trainings, builder: (_, __) => const TrainingsScreen()),
-          GoRoute(path: AppRoutes.evaluations, builder: (_, __) => const EvaluationsScreen()),
-          GoRoute(path: AppRoutes.documents, builder: (_, __) => const DocumentsScreen()),
-          GoRoute(path: AppRoutes.recruitment, builder: (_, __) => const RecruitmentScreen()),
           GoRoute(path: AppRoutes.users, builder: (_, __) => const UsersScreen()),
           GoRoute(path: AppRoutes.notifications, builder: (_, __) => const NotificationsScreen()),
-          GoRoute(path: AppRoutes.messaging, builder: (_, __) => const MessagingScreen()),
           GoRoute(path: AppRoutes.agenda, builder: (_, __) => const AgendaScreen()),
           GoRoute(path: AppRoutes.reports, builder: (_, __) => const ReportsScreen()),
           GoRoute(path: AppRoutes.settings, builder: (_, __) => const SettingsScreen()),
           GoRoute(path: AppRoutes.security, builder: (_, __) => const SecurityScreen()),
           GoRoute(path: AppRoutes.schedules, builder: (_, __) => const SchedulesScreen()),
-          GoRoute(path: AppRoutes.bonuses, builder: (_, __) => const BonusesScreen()),
         ],
       ),
     ],
@@ -314,14 +300,12 @@ class _SideNav extends ConsumerWidget {
     final groups = _getNavGroups(role);
     final visible = groups.where((g) => g.items.isNotEmpty).toList();
 
-    // Uniquement Admin & Directeur : menu en sections repliables
     if (role == AppConstants.roleAdmin || role == AppConstants.roleDirector) {
       return visible
           .map((g) => _NavGroupTile(group: g, currentLocation: currentLocation))
           .toList();
     }
 
-    // Autres rôles : liste à plat (non repliable)
     return visible.expand((g) => g.items).map((item) {
       final isActive = currentLocation.startsWith(item.route);
       return _NavItem(
@@ -329,13 +313,12 @@ class _SideNav extends ConsumerWidget {
         label: item.label,
         route: item.route,
         isActive: isActive,
-        badge: item.badge,
       );
     }).toList();
   }
 
   List<_NavGroup> _getNavGroups(String role) {
-    final all = [
+    List<_NavItemData> filter(List<String> routes) => [
       _NavItemData(Icons.dashboard_outlined, 'Tableau de bord', AppRoutes.dashboard),
       _NavItemData(Icons.people_outline, 'Employés', AppRoutes.employees),
       _NavItemData(Icons.business_outlined, 'Départements', AppRoutes.departments),
@@ -345,76 +328,46 @@ class _SideNav extends ConsumerWidget {
       _NavItemData(Icons.beach_access_outlined, 'Congés', AppRoutes.leaves),
       _NavItemData(Icons.event_busy_outlined, 'Absences', AppRoutes.absences),
       _NavItemData(Icons.schedule_outlined, 'Horaires', AppRoutes.schedules),
-      _NavItemData(Icons.payments_outlined, 'Paie', AppRoutes.payroll),
-      _NavItemData(Icons.star_outline, 'Primes', AppRoutes.bonuses),
-      _NavItemData(Icons.gavel_outlined, 'Sanctions', AppRoutes.sanctions),
       _NavItemData(Icons.school_outlined, 'Formations', AppRoutes.trainings),
-      _NavItemData(Icons.assessment_outlined, 'Évaluations', AppRoutes.evaluations),
-      _NavItemData(Icons.folder_outlined, 'Documents', AppRoutes.documents),
-      _NavItemData(Icons.person_search_outlined, 'Recrutement', AppRoutes.recruitment),
-      _NavItemData(Icons.chat_outlined, 'Messagerie', AppRoutes.messaging),
       _NavItemData(Icons.calendar_month_outlined, 'Agenda', AppRoutes.agenda),
       _NavItemData(Icons.bar_chart_outlined, 'Rapports', AppRoutes.reports),
       _NavItemData(Icons.manage_accounts_outlined, 'Utilisateurs', AppRoutes.users),
       _NavItemData(Icons.settings_outlined, 'Paramètres', AppRoutes.settings),
       _NavItemData(Icons.security_outlined, 'Sécurité', AppRoutes.security),
-    ];
-
-    // Réservé au Directeur (et Admin) : Paie, Primes, Sanctions
-    const directorOnly = [
-      AppRoutes.payroll,
-      AppRoutes.bonuses,
-      AppRoutes.sanctions,
-    ];
-
-    List<_NavItemData> filter(List<String> routes) =>
-        all.where((i) => routes.contains(i.route)).toList();
+    ].where((i) => routes.contains(i.route)).toList();
 
     final groups = [
-      _NavGroup(Icons.dashboard_outlined, 'Pilotage', [all[0]]),
-      _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
-      _NavGroup(Icons.fact_check_outlined, 'Suivi & Discipline', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.sanctions])),
-      _NavGroup(Icons.payments_outlined, 'Rémunération & Développement', filter([AppRoutes.payroll, AppRoutes.bonuses, AppRoutes.trainings, AppRoutes.evaluations, AppRoutes.documents, AppRoutes.recruitment])),
-      _NavGroup(Icons.forum_outlined, 'Communication & Administration', filter([AppRoutes.messaging, AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
+      _NavGroup(Icons.dashboard_outlined, 'Pilotage',
+          filter([AppRoutes.dashboard])),
+      _NavGroup(Icons.groups_outlined, 'Personnel',
+          filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
+      _NavGroup(Icons.fact_check_outlined, 'Suivi',
+          filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+      _NavGroup(Icons.admin_panel_settings_outlined, 'Administration',
+          filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
     ];
 
     switch (role) {
       case AppConstants.roleEmployee:
-        return groups
-            .where((g) => g.items.any((i) => [
-                  AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
-                  AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
-                ].contains(i.route)))
-            .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
-                  AppRoutes.dashboard, AppRoutes.leaves, AppRoutes.attendance,
-                  AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.documents, AppRoutes.settings, AppRoutes.security,
-                ].contains(i.route)).toList()))
-            .toList();
-
+        return [
+          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves])),
+          _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.settings, AppRoutes.security])),
+        ];
       case AppConstants.roleChefService:
-        return groups
-            .where((g) => g.items.any((i) => [
-                  AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
-                  AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
-                  AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.settings, AppRoutes.security,
-                ].contains(i.route)))
-            .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => [
-                  AppRoutes.dashboard, AppRoutes.employees, AppRoutes.attendance,
-                  AppRoutes.leaves, AppRoutes.trainings, AppRoutes.documents,
-                  AppRoutes.messaging, AppRoutes.agenda,
-                  AppRoutes.settings, AppRoutes.security,
-                ].contains(i.route)).toList()))
-            .toList();
-
+        return [
+          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+          _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.settings, AppRoutes.security])),
+        ];
       case AppConstants.roleRH:
-        return groups
-            .where((g) => g.items.any((i) => !directorOnly.contains(i.route)))
-            .map((g) => _NavGroup(g.icon, g.title, g.items.where((i) => !directorOnly.contains(i.route)).toList()))
-            .toList();
-
+        return [
+          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+          _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.settings, AppRoutes.security])),
+        ];
       default:
         return groups;
     }
@@ -428,35 +381,79 @@ class _NavGroup {
   _NavGroup(this.icon, this.title, this.items);
 }
 
-class _NavGroupTile extends StatelessWidget {
+class _NavGroupTile extends StatefulWidget {
   final _NavGroup group;
   final String currentLocation;
   const _NavGroupTile({required this.group, required this.currentLocation});
 
   @override
+  State<_NavGroupTile> createState() => _NavGroupTileState();
+}
+
+class _NavGroupTileState extends State<_NavGroupTile> {
+  bool _expanded = true;
+
+  @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        initiallyExpanded: true,
-        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-        leading: Icon(group.icon, color: Colors.white70, size: 18),
-        title: Text(
-          group.title.toUpperCase(),
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-        ),
-        collapsedIconColor: Colors.white70,
-        iconColor: Colors.white70,
-        childrenPadding: const EdgeInsets.only(left: 6),
-        children: group.items
-            .map((item) => _NavItem(
-                  icon: item.icon,
-                  label: item.label,
-                  route: item.route,
-                  isActive: currentLocation.startsWith(item.route),
-                  badge: item.badge,
-                ))
-            .toList(),
+    final hasActive = widget.group.items
+        .any((i) => widget.currentLocation.startsWith(i.route));
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _expanded = true),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Icon(widget.group.icon,
+                      color: hasActive ? const Color(0xFFFFD700) : Colors.white54,
+                      size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.group.title.toUpperCase(),
+                      style: TextStyle(
+                        color: hasActive ? const Color(0xFFFFD700) : Colors.white54,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.white38,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: Padding(
+              padding: const EdgeInsets.only(left: 6, bottom: 4),
+              child: Column(
+                children: widget.group.items
+                    .map((item) => _NavItem(
+                          icon: item.icon,
+                          label: item.label,
+                          route: item.route,
+                          isActive: widget.currentLocation.startsWith(item.route),
+                        ))
+                    .toList(),
+              ),
+            ),
+            secondChild: const SizedBox.shrink(),
+            crossFadeState: _expanded
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
+            duration: const Duration(milliseconds: 180),
+          ),
+        ],
       ),
     );
   }
@@ -466,8 +463,7 @@ class _NavItemData {
   final IconData icon;
   final String label;
   final String route;
-  final String? badge;
-  _NavItemData(this.icon, this.label, this.route, {this.badge});
+  _NavItemData(this.icon, this.label, this.route);
 }
 
 class _NavItem extends StatelessWidget {
@@ -475,14 +471,12 @@ class _NavItem extends StatelessWidget {
   final String label;
   final String route;
   final bool isActive;
-  final String? badge;
 
   const _NavItem({
     required this.icon,
     required this.label,
     required this.route,
     required this.isActive,
-    this.badge,
   });
 
   @override
@@ -515,20 +509,11 @@ class _NavItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700),
-                       borderRadius: BorderRadius.circular(10),
-                     ),
-                     child: Text(badge!, style: const TextStyle(color: Color(0xFF8B0000), fontSize: 10, fontWeight: FontWeight.bold)),
-                   ),
-               ],
-             ),
-           ),
-         ),
-       ),
-     );
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
