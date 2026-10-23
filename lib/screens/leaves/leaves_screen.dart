@@ -68,13 +68,14 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen>
   }
 
   void _showLeaveForm(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: const _LeaveForm(),
+        ),
       ),
-      builder: (_) => const _LeaveForm(),
     );
   }
 }

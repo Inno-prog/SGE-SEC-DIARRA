@@ -72,11 +72,14 @@ class PositionsScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, [dynamic pos]) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _PositionForm(position: pos),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: _PositionForm(position: pos),
+        ),
+      ),
     );
   }
 }

@@ -47,13 +47,14 @@ class DepartmentsScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, [DepartmentModel? dept]) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: _DeptForm(dept: dept),
+        ),
       ),
-      builder: (_) => _DeptForm(dept: dept),
     );
   }
 }
@@ -97,13 +98,14 @@ class _DeptCard extends ConsumerWidget {
         trailing: PopupMenuButton<String>(
           onSelected: (v) async {
             if (v == 'edit') {
-              showModalBottomSheet(
+              showDialog(
                 context: context,
-                isScrollControlled: true,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                builder: (_) => Dialog(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    child: _DeptForm(dept: dept),
+                  ),
                 ),
-                builder: (_) => _DeptForm(dept: dept),
               );
             } else if (v == 'delete') {
               final ok = await showConfirm(

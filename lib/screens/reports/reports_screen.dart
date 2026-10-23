@@ -1427,13 +1427,14 @@ class UsersScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, [UserModel? user]) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: _UserForm(user: user),
+        ),
       ),
-      builder: (_) => _UserForm(user: user),
     );
   }
 }
@@ -1493,13 +1494,14 @@ class _UserTile extends ConsumerWidget {
             PopupMenuButton<String>(
               onSelected: (v) async {
                 if (v == 'edit') {
-                  showModalBottomSheet(
+                  showDialog(
                     context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    builder: (_) => Dialog(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: _UserForm(user: user),
+                      ),
                     ),
-                    builder: (_) => _UserForm(user: user),
                   );
                 } else if (v == 'toggle') {
                   await ref

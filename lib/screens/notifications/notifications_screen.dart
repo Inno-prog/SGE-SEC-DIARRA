@@ -225,13 +225,14 @@ class MessagingScreen extends ConsumerWidget {
   }
 
   void _showNewConversation(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: _NewConversationSheet(),
+        ),
       ),
-      builder: (_) => _NewConversationSheet(),
     );
   }
 }
@@ -667,13 +668,14 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   }
 
   void _showForm(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: _AgendaForm(initialDate: _selectedDay),
+        ),
       ),
-      builder: (_) => _AgendaForm(initialDate: _selectedDay),
     );
   }
 }

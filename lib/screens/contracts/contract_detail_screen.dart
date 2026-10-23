@@ -208,13 +208,14 @@ class ContractDetailScreen extends ConsumerWidget {
   }
 
   void _showForm(BuildContext context, WidgetRef ref, ContractModel contract) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: ContractForm(contract: contract),
+        ),
       ),
-      builder: (_) => ContractForm(contract: contract),
     );
   }
 }
