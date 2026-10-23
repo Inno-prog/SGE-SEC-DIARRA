@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Couleurs sang / rouge bordeaux
-  static const Color primary = Color(0xFF8B0000);       // Dark Red / Sang
-  static const Color primaryLight = Color(0xFFB71C1C);  // Red 900
-  static const Color primaryDark = Color(0xFF560000);   // Très sombre
-  static const Color accent = Color(0xFFD32F2F);        // Red 700
-  static const Color accentLight = Color(0xFFEF5350);   // Red 400
+  static const Color primary = Color(0xFF580000);       // Dark Red / Sang
+  static const Color primaryLight = Color(0xFF580000);
+  static const Color primaryDark = Color(0xFF580000);   // Très sombre
+  static const Color accent = Color(0xFF580000);
+  static const Color accentLight = Color(0xFF580000);
   static const Color gold = Color(0xFFFFD700);          // Or pour contraste
   static const Color goldLight = Color(0xFFFFF176);
 
@@ -25,7 +25,7 @@ class AppColors {
   // Status
   static const Color success = Color(0xFF2E7D32);
   static const Color warning = Color(0xFFF57F17);
-  static const Color error = Color(0xFFC62828);
+  static const Color error = Color(0xFF580000);
   static const Color info = Color(0xFF1565C0);
 
   // Gradients
@@ -36,7 +36,7 @@ class AppColors {
   );
 
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF8B0000), Color(0xFFB71C1C)],
+    colors: [Color(0xFF580000), Color(0xFF580000)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

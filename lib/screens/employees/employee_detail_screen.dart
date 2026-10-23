@@ -9,6 +9,7 @@ import '../../providers/providers.dart';
 import '../../utils/document_viewer.dart';
 import '../../models/employee_model.dart';
 import '../../models/models.dart';
+import '../../services/firestore_service.dart';
 
 class EmployeeDetailScreen extends ConsumerWidget {
   final String id;
@@ -49,7 +50,7 @@ class _EmployeeDetailView extends ConsumerWidget {
             user.role == AppConstants.roleRH);
 
     return DefaultTabController(
-      length: 8,
+      length: 5,
       child: Scaffold(
         body: NestedScrollView(
           headerSliverBuilder: (_, __) => [
@@ -116,10 +117,7 @@ class _EmployeeDetailView extends ConsumerWidget {
                   Tab(text: 'Contrats'),
                   Tab(text: 'Présences'),
                   Tab(text: 'Congés'),
-                  Tab(text: 'Paie'),
-                  Tab(text: 'Sanctions'),
                   Tab(text: 'Formations'),
-                  Tab(text: 'Documents'),
                 ],
               ),
             ),
@@ -130,13 +128,7 @@ class _EmployeeDetailView extends ConsumerWidget {
               _ContractsTab(employeeId: employee.id),
               _AttendanceTab(employeeId: employee.id),
               _LeavesTab(employeeId: employee.id),
-              _PayrollTab(employeeId: employee.id),
-              _SanctionsTab(employeeId: employee.id),
               _TrainingsTab(employeeId: employee.id),
-              _DocumentsTab(
-                employeeId: employee.id,
-                employeeNom: employee.fullName,
-              ),
             ],
           ),
         ),
@@ -400,43 +392,112 @@ class _ContractsTab extends ConsumerWidget {
   }
 }
 
-class _ContractCard extends StatelessWidget {
+class _ContractCard extends ConsumerWidget {
   final ContractModel contract;
   const _ContractCard({required this.contract});
 
+  Future<void> _openFile(
+    BuildContext context,
+    WidgetRef ref,
+    String fileId,
+    String fileName,
+  ) async {
+    try {
+      final service = ref.read(firestoreServiceProvider);
+      final bytes = await service.getDocumentBytes(fileId);
+      if (context.mounted) {
+        await openDocument(bytes, service.guessMimeType(fileName), fileName);
+      }
+    } catch (e) {
+      if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.description_outlined,
-            color: AppColors.primary,
-          ),
-        ),
-        title: Text(
-          contract.type,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          'Du ${DateFormat('dd/MM/yyyy').format(contract.dateDebut)}${contract.dateFin != null ? ' au ${DateFormat('dd/MM/yyyy').format(contract.dateFin!)}' : ' (indéterminé)'}',
-        ),
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            StatusBadge(status: contract.statut),
-            if (contract.isExpiringSoon)
-              const Text(
-                '⚠️ Expire bientôt',
-                style: TextStyle(fontSize: 10, color: AppColors.warning),
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.description_outlined, color: AppColors.primary, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(contract.type,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'Du ${DateFormat('dd/MM/yyyy').format(contract.dateDebut)}'
+                        '${contract.dateFin != null ? ' au ${DateFormat('dd/MM/yyyy').format(contract.dateFin!)}' : ' (indéterminé)'}',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusBadge(status: contract.statut),
+                    if (contract.isExpiringSoon)
+                      const Text('⚠️ Expire bientôt',
+                          style: TextStyle(fontSize: 10, color: AppColors.warning)),
+                  ],
+                ),
+              ],
+            ),
+            if (contract.piecesJointes.isNotEmpty) ...[
+              const Divider(height: 20),
+              const Text('Fichiers joints',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              ...contract.piecesJointes.asMap().entries.map((e) {
+                final fileId = e.value;
+                final fileName = 'contrat_${contract.id}_${e.key + 1}.pdf';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.attach_file, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Fichier ${e.key + 1}',
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => _openFile(context, ref, fileId, fileName),
+                        icon: const Icon(Icons.visibility_outlined, size: 16),
+                        label: const Text('Voir'),
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ] else ...[
+              const SizedBox(height: 8),
+              const Text('Aucun fichier joint',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
+            if (contract.notes != null && contract.notes!.isNotEmpty) ...[
+              const Divider(height: 16),
+              Text(contract.notes!,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
           ],
         ),
       ),
@@ -540,133 +601,7 @@ class _LeavesTab extends ConsumerWidget {
   }
 }
 
-class _PayrollTab extends ConsumerWidget {
-  final String employeeId;
-  const _PayrollTab({required this.employeeId});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final payroll = ref.watch(
-      payrollProvider(PayrollParams(employeeId: employeeId)),
-    );
-    final months = [
-      '',
-      'Jan',
-      'Fév',
-      'Mar',
-      'Avr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Aoû',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Déc',
-    ];
-    return payroll.when(
-      data: (list) => list.isEmpty
-          ? const EmptyState(
-              message: 'Aucune fiche de paie',
-              icon: Icons.payments_outlined,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (_, i) {
-                final p = list[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.payments_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: Text(
-                      '${months[p.mois]} ${p.annee}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      'Brut: ${NumberFormat('#,###').format(p.brutTotal)} FCFA',
-                    ),
-                    trailing: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '${NumberFormat('#,###').format(p.netAPayer)} FCFA',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        StatusBadge(status: p.statut),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-      loading: () => const LoadingWidget(),
-      error: (e, _) => Center(
-        child: Text(
-          "Erreur: $e",
-          style: const TextStyle(color: AppColors.error),
-        ),
-      ),
-    );
-  }
-}
-
-class _SanctionsTab extends ConsumerWidget {
-  final String employeeId;
-  const _SanctionsTab({required this.employeeId});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final sanctions = ref.watch(sanctionsProvider(employeeId));
-    return sanctions.when(
-      data: (list) => list.isEmpty
-          ? const EmptyState(
-              message: 'Aucune sanction',
-              icon: Icons.gavel_outlined,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (_, i) {
-                final s = list[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.gavel_outlined,
-                      color: AppColors.error,
-                    ),
-                    title: Text(
-                      s.type,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(s.motif),
-                    trailing: Text(
-                      DateFormat('dd/MM/yyyy').format(s.date),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                );
-              },
-            ),
-      loading: () => const LoadingWidget(),
-      error: (e, _) => Center(
-        child: Text(
-          "Erreur: $e",
-          style: const TextStyle(color: AppColors.error),
-        ),
-      ),
-    );
-  }
-}
 
 class _TrainingsTab extends ConsumerWidget {
   final String employeeId;
@@ -717,52 +652,4 @@ class _TrainingsTab extends ConsumerWidget {
   }
 }
 
-class _DocumentsTab extends ConsumerWidget {
-  final String employeeId;
-  final String employeeNom;
-  const _DocumentsTab({required this.employeeId, required this.employeeNom});
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final docs = ref.watch(documentsProvider(employeeId));
-    return docs.when(
-      data: (list) => list.isEmpty
-          ? const EmptyState(
-              message: 'Aucun document',
-              icon: Icons.folder_outlined,
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (_, i) {
-                final d = list[i];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: const Icon(
-                      Icons.insert_drive_file_outlined,
-                      color: AppColors.primary,
-                    ),
-                    title: Text(
-                      d.nom,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(d.type),
-                    trailing: Text(
-                      DateFormat('dd/MM/yyyy').format(d.createdAt),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                );
-              },
-            ),
-      loading: () => const LoadingWidget(),
-      error: (e, _) => Center(
-        child: Text(
-          "Erreur: $e",
-          style: const TextStyle(color: AppColors.error),
-        ),
-      ),
-    );
-  }
-}

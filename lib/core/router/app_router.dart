@@ -18,7 +18,6 @@ import '../../screens/contracts/contract_detail_screen.dart';
 import '../../screens/attendance/attendance_screen.dart';
 import '../../screens/leaves/leaves_screen.dart';
 import '../../screens/absences/absences_screen.dart';
-import '../../screens/trainings/trainings_screen.dart';
 import '../../screens/users/users_screen.dart';
 import '../../screens/notifications/notifications_screen.dart';
 import '../../screens/agenda/agenda_screen.dart';
@@ -120,7 +119,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppRoutes.attendance, builder: (_, __) => const AttendanceScreen()),
           GoRoute(path: AppRoutes.leaves, builder: (_, __) => const LeavesScreen()),
           GoRoute(path: AppRoutes.absences, builder: (_, __) => const AbsencesScreen()),
-          GoRoute(path: AppRoutes.trainings, builder: (_, __) => const TrainingsScreen()),
           GoRoute(path: AppRoutes.users, builder: (_, __) => const UsersScreen()),
           GoRoute(path: AppRoutes.notifications, builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: AppRoutes.agenda, builder: (_, __) => const AgendaScreen()),
@@ -195,7 +193,7 @@ class _SideNav extends ConsumerWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF560000), Color(0xFF8B0000)],
+          colors: [Color(0xFF580000), Color(0xFF580000)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -328,7 +326,6 @@ class _SideNav extends ConsumerWidget {
       _NavItemData(Icons.beach_access_outlined, 'Congés', AppRoutes.leaves),
       _NavItemData(Icons.event_busy_outlined, 'Absences', AppRoutes.absences),
       _NavItemData(Icons.schedule_outlined, 'Horaires', AppRoutes.schedules),
-      _NavItemData(Icons.school_outlined, 'Formations', AppRoutes.trainings),
       _NavItemData(Icons.calendar_month_outlined, 'Agenda', AppRoutes.agenda),
       _NavItemData(Icons.bar_chart_outlined, 'Rapports', AppRoutes.reports),
       _NavItemData(Icons.manage_accounts_outlined, 'Utilisateurs', AppRoutes.users),
@@ -342,7 +339,7 @@ class _SideNav extends ConsumerWidget {
       _NavGroup(Icons.groups_outlined, 'Personnel',
           filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
       _NavGroup(Icons.fact_check_outlined, 'Suivi',
-          filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+          filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
       _NavGroup(Icons.admin_panel_settings_outlined, 'Administration',
           filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
     ];
@@ -358,14 +355,14 @@ class _SideNav extends ConsumerWidget {
         return [
           _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
           _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees])),
-          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
           _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.settings, AppRoutes.security])),
         ];
       case AppConstants.roleRH:
         return [
           _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
           _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
-          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.trainings])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
           _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.settings, AppRoutes.security])),
         ];
       default:

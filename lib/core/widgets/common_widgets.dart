@@ -458,7 +458,7 @@ class NotificationBell extends ConsumerWidget {
                 child: Text(
                   '$unread',
                   style: const TextStyle(
-                    color: Color(0xFF8B0000),
+                    color: Color(0xFF580000),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),

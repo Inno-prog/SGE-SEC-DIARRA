@@ -21,10 +21,8 @@ class ReportsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final reports = [
       ('Rapport des présences', Icons.fingerprint, AppColors.primary),
-      ('Rapport des salaires', Icons.payments_outlined, AppColors.success),
       ('Rapport des congés', Icons.beach_access_outlined, AppColors.info),
       ('Rapport des employés', Icons.people_outline, AppColors.accent),
-      ('Rapport des sanctions', Icons.gavel_outlined, AppColors.error),
       ('Rapport des formations', Icons.school_outlined, AppColors.warning),
     ];
 
@@ -217,10 +215,6 @@ class ReportsScreen extends ConsumerWidget {
         data = await service.getAllAttendance();
         subtitle = 'Total pointages: ${data.length}';
         break;
-      case 'Rapport des salaires':
-        data = await service.getAllPayroll();
-        subtitle = 'Total fiches: ${data.length}';
-        break;
       case 'Rapport des congés':
         data = await service.getAllLeaves();
         subtitle = 'Total demandes: ${data.length}';
@@ -228,10 +222,6 @@ class ReportsScreen extends ConsumerWidget {
       case 'Rapport des employés':
         data = await service.getAllEmployees();
         subtitle = 'Total employés: ${data.length}';
-        break;
-      case 'Rapport des sanctions':
-        data = await service.getAllSanctions();
-        subtitle = 'Total sanctions: ${data.length}';
         break;
       case 'Rapport des formations':
         data = await service.getAllTrainings();
@@ -327,14 +317,10 @@ class ReportsScreen extends ConsumerWidget {
     switch (reportName) {
       case 'Rapport des présences':
         return _buildAttendanceTable(data.cast<AttendanceModel>());
-      case 'Rapport des salaires':
-        return _buildPayrollTable(data.cast<PayrollModel>());
       case 'Rapport des congés':
         return _buildLeaveTable(data.cast<LeaveModel>());
       case 'Rapport des employés':
         return _buildEmployeeTable(data.cast<EmployeeModel>());
-      case 'Rapport des sanctions':
-        return _buildSanctionTable(data.cast<SanctionModel>());
       case 'Rapport des formations':
         return _buildTrainingTable(data.cast<TrainingModel>());
       default:

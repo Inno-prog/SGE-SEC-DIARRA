@@ -227,35 +227,6 @@ final pendingLeavesProvider = StreamProvider<List<LeaveModel>>((ref) {
   return ref.watch(firestoreServiceProvider).watchLeaves(statut: 'en_attente');
 });
 
-// ─── Payroll ─────────────────────────────────────────────────────────────────
-class PayrollParams {
-  final int? mois;
-  final int? annee;
-  final String? employeeId;
-  const PayrollParams({this.mois, this.annee, this.employeeId});
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is PayrollParams &&
-          other.mois == mois &&
-          other.annee == annee &&
-          other.employeeId == employeeId;
-
-  @override
-  int get hashCode => mois.hashCode ^ annee.hashCode ^ employeeId.hashCode;
-}
-
-final selectedPayrollMonthProvider = StateProvider<DateTime>((ref) => DateTime.now());
-
-final payrollProvider = StreamProvider.family<List<PayrollModel>, PayrollParams>((ref, params) {
-  return ref.watch(firestoreServiceProvider).watchPayroll(
-        mois: params.mois,
-        annee: params.annee,
-        employeeId: params.employeeId,
-      );
-});
-
 // ─── Bonuses ────────────────────────────────────────────────
 class BonusParams {
   final String? employeeId;
@@ -283,24 +254,9 @@ final allBonusesProvider = StreamProvider<List<BonusModel>>((ref) {
   return ref.watch(firestoreServiceProvider).watchBonuses();
 });
 
-// ─── Sanctions ───────────────────────────────────────────────────────────────
-final sanctionsProvider = StreamProvider.family<List<SanctionModel>, String?>((ref, employeeId) {
-  return ref.watch(firestoreServiceProvider).watchSanctions(employeeId: employeeId);
-});
-
 // ─── Trainings ───────────────────────────────────────────────────────────────
 final trainingsProvider = StreamProvider.family<List<TrainingModel>, String?>((ref, employeeId) {
   return ref.watch(firestoreServiceProvider).watchTrainings(employeeId: employeeId);
-});
-
-// ─── Evaluations ─────────────────────────────────────────────────────────────
-final evaluationsProvider = StreamProvider.family<List<EvaluationModel>, String?>((ref, employeeId) {
-  return ref.watch(firestoreServiceProvider).watchEvaluations(employeeId: employeeId);
-});
-
-// ─── Documents ───────────────────────────────────────────────────────────────
-final documentsProvider = StreamProvider.family<List<DocumentModel>, String?>((ref, employeeId) {
-  return ref.watch(firestoreServiceProvider).watchDocuments(employeeId: employeeId);
 });
 
 // ─── Recruitment ─────────────────────────────────────────────────────────────
