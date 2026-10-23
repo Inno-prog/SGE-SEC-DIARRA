@@ -333,39 +333,28 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
     super.initState();
     final user = ref.read(currentUserProvider)!;
     if (user.role == AppConstants.roleEmployee) {
-      if (user.employeeId != null) {
-        _employeeId = user.employeeId;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            final emp = ref
-                .read(allEmployeesProvider)
-                .value
-                ?.firstWhere((e) => e.id == user.employeeId);
-            if (emp != null && mounted) {
-              setState(() {
-                _employeeNom = emp.fullName;
-                _employeePhoto = emp.photoUrl;
-              });
-            }
-          } catch (_) {}
-        });
-      } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          try {
-            final emp = ref
-                .read(allEmployeesProvider)
-                .value
-                ?.firstWhere((e) => e.fullName == user.fullName || e.email == user.email);
-            if (emp != null && mounted) {
-              setState(() {
-                _employeeId = emp.id;
-                _employeeNom = emp.fullName;
-                _employeePhoto = emp.photoUrl;
-              });
-            }
-          } catch (_) {}
-        });
-      }
+      _employeeId = user.employeeId;
+      _employeeNom = user.fullName;
+      _employeePhoto = user.photoUrl;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          final all = ref.read(allEmployeesProvider).value;
+          if (all == null) return;
+          final emp = all.firstWhere(
+            (e) =>
+                (user.employeeId != null && e.id == user.employeeId) ||
+                e.fullName == user.fullName ||
+                e.email == user.email,
+          );
+          if (mounted) {
+            setState(() {
+              _employeeId = emp.id;
+              _employeeNom = emp.fullName;
+              _employeePhoto = emp.photoUrl;
+            });
+          }
+        } catch (_) {}
+      });
     }
   }
 
