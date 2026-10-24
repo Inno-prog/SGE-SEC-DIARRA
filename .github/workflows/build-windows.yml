@@ -24,9 +24,15 @@ jobs:
       - name: Build Windows EXE
         run: flutter build windows --release
 
-      - name: Upload Windows EXE
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Create Windows Installer
+        run: iscc windows/installer.iss
+
+      - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
         with:
-          name: sge-secdiarra-windows-exe
-          path: build/windows/x64/runner/Release/
+          name: sge-secdiarra-windows-installer
+          path: build/windows/installer/SGE_SecDiarra_Setup.exe
           retention-days: 14
