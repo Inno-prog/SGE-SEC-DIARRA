@@ -13,13 +13,13 @@ DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=build/windows/installer
 OutputBaseFilename=SGE_SecDiarra_Setup
-SetupIconFile=windows/runner/resources/app_icon.ico
+SetupIconFile=
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
 
 [Files]
-Source: "build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
