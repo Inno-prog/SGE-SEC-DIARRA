@@ -33,7 +33,9 @@ class _LeavesScreenState extends ConsumerState<LeavesScreen>
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider)!;
-    final isRH = user.role != AppConstants.roleEmployee;
+    final isRH = user.role == AppConstants.roleAdmin ||
+        user.role == AppConstants.roleRH ||
+        user.role == AppConstants.roleDirector;
 
     return Scaffold(
       appBar: AppBar(
@@ -420,7 +422,9 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider)!;
-    final isRH = user.role != AppConstants.roleEmployee;
+    final isRH = user.role == AppConstants.roleAdmin ||
+        user.role == AppConstants.roleRH ||
+        user.role == AppConstants.roleDirector;
     final employees = ref.watch(allEmployeesProvider);
 
     return Padding(

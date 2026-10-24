@@ -209,19 +209,19 @@ class _AttendanceStats extends StatelessWidget {
     final conge = list.where((a) => a.statut == 'conge').length;
 
     return SizedBox(
-      height: 72,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
+      height: MediaQuery.of(context).size.width > 600 ? 100 : 72,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          _StatChip('Présents', present, AppColors.success),
-          const SizedBox(width: 8),
-          _StatChip('Absents', absent, AppColors.error),
-          const SizedBox(width: 8),
-          _StatChip('Retards', retard, AppColors.warning),
-          const SizedBox(width: 8),
-          _StatChip('Congés', conge, AppColors.info),
-        ],
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _StatChip('Présents', present, AppColors.success),
+            _StatChip('Absents', absent, AppColors.error),
+            _StatChip('Retards', retard, AppColors.warning),
+            _StatChip('Congés', conge, AppColors.info),
+          ],
+        ),
       ),
     );
   }
@@ -235,10 +235,11 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
     return SizedBox(
-      width: 100,
+      width: w > 600 ? 160 : 100,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
           color: color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
@@ -250,10 +251,11 @@ class _StatChip extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: w > 600 ? 28 : 18,
               ),
             ),
-            Text(label, style: TextStyle(color: color, fontSize: 10)),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(color: color, fontSize: w > 600 ? 14 : 10)),
           ],
         ),
       ),
