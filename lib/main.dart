@@ -6,6 +6,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'firebase_options.dart';
@@ -22,17 +23,21 @@ Future<void> main() async {
   }
   if (kIsWeb) {
     // App Check non activé sur web (nécessite domaine enregistré dans Firebase Console)
-  } else if (kDebugMode) {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-      appleProvider: AppleProvider.debug,
-    );
-  } else {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.deviceCheck,
-    );
+  } else if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
+    if (kDebugMode) {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.debug,
+        appleProvider: AppleProvider.debug,
+      );
+    } else {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.deviceCheck,
+      );
+    }
   }
+  // Sur Windows (et autres plateformes non prises en charge par le plugin),
+  // App Check n'est pas activé pour éviter MissingPluginException.
   if (!kIsWeb) {
     try {
       await FirebaseFirestore.instance.enablePersistence(
