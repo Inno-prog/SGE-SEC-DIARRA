@@ -52,6 +52,7 @@ dependencies:
   dartz: ^0.10.1
   shared_preferences: ^2.3.2
   encrypt: ^5.0.3
+  web: ^1.0.0
   # js removed: discontinued and web-only
   # pinput removed: not used in app and breaks Android build
   lottie: ^3.1.2

@@ -1,3 +1,4 @@
+import 'dart:js_interop';
 import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
@@ -15,14 +16,18 @@ Future<void> openDocumentUrl(String url, String fileName) async {
   anchor.click();
 }
 
-/// Legacy method for downloading and opening bytes (kept for compatibility)
+/// Downloads and opens document bytes (for web)
 Future<void> openDocumentBytes(Uint8List bytes, String mimeType, String fileName) async {
-  // For web, we'll use the URL approach instead
-  // This is kept for non-web platforms if needed
-  throw UnimplementedError('Use openDocumentUrl on web');
+  final blob = web.Blob([bytes.toJS].toJS, web.BlobPropertyBag(type: mimeType.toJS.toDart));
+  final url = web.URL.createObjectURL(blob);
+  final anchor = web.HTMLAnchorElement()
+    ..href = url
+    ..download = fileName;
+  anchor.click();
+  web.URL.revokeObjectURL(url);
 }
 
-/// Platform-aware openDocument - on web, use openDocumentUrl instead
+/// Platform-aware openDocument - on web, uses openDocumentBytes
 Future<void> openDocument(Uint8List bytes, String mimeType, String fileName) async {
-  throw UnsupportedError('On web, use openDocumentUrl instead');
+  await openDocumentBytes(bytes, mimeType, fileName);
 }

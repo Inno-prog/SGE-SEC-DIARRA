@@ -7,7 +7,7 @@ import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
-import '../../utils/document_viewer_web.dart';
+import '../../utils/document_viewer.dart';
 import 'contract_form.dart';
 
 class ContractDetailScreen extends ConsumerWidget {

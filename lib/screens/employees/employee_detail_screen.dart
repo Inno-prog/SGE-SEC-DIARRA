@@ -7,7 +7,6 @@ import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../utils/document_viewer.dart';
-import '../../utils/document_viewer_web.dart' as web_viewer;
 import '../../models/employee_model.dart';
 import '../../models/models.dart';
 
@@ -149,7 +148,7 @@ class _InfoTab extends ConsumerWidget {
     try {
       // Use document URL directly for web (opens in new tab)
       if (document.url.isNotEmpty) {
-        await web_viewer.openDocumentUrl(document.url, document.nom);
+        await openDocumentUrl(document.url, document.nom);
       } else {
         // Fallback to download if no URL
         final documentService = ref.read(documentApiServiceProvider);
