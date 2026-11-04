@@ -52,7 +52,7 @@ dependencies:
   dartz: ^0.10.1
   shared_preferences: ^2.3.2
   encrypt: ^5.0.3
-  js: ^0.7.1
+  # js removed: discontinued and web-only
   # pinput removed: not used in app and breaks Android build
   lottie: ^3.1.2
   flutter_animate: ^4.5.0
@@ -69,6 +69,9 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.4.12
   riverpod_generator: ^2.4.3
+
+dependency_overrides:
+  web: ^0.5.0
 
 flutter:
   uses-material-design: true
