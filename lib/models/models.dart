@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; // Removed - using REST API instead
 
 class ContractModel {
   final String id;
@@ -36,37 +36,39 @@ class ContractModel {
     return dateFin!.difference(DateTime.now()).inDays <= 30;
   }
 
-  factory ContractModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory ContractModel.fromJson(Map<String, dynamic> json) {
     return ContractModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      type: d['type'] ?? '',
-      dateDebut: (d['dateDebut'] as Timestamp).toDate(),
-      dateFin: (d['dateFin'] as Timestamp?)?.toDate(),
-      dureeEnMois: d['dureeEnMois'],
-      renouvellement: d['renouvellement'] ?? false,
-      notes: d['notes'],
-      piecesJointes: List<String>.from(d['piecesJointes'] ?? []),
-      statut: d['statut'] ?? 'actif',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      type: json['type'] ?? '',
+      dateDebut: DateTime.parse(json['dateDebut'] ?? json['date_debut'] ?? DateTime.now().toIso8601String()),
+      dateFin: json['dateFin'] != null || json['date_fin'] != null
+          ? DateTime.parse(json['dateFin'] ?? json['date_fin'] ?? DateTime.now().toIso8601String())
+          : null,
+      dureeEnMois: json['dureeEnMois'] ?? json['duree_en_mois'],
+      renouvellement: json['renouvellement'] ?? false,
+      notes: json['notes'],
+      piecesJointes: List<String>.from(json['piecesJointes'] ?? json['pieces_jointes'] ?? []),
+      statut: json['statut'] ?? 'actif',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'type': type,
-        'dateDebut': Timestamp.fromDate(dateDebut),
-        'dateFin': dateFin != null ? Timestamp.fromDate(dateFin!) : null,
+        'dateDebut': dateDebut.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'dateFin': dateFin?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'dureeEnMois': dureeEnMois,
         'renouvellement': renouvellement,
         'notes': notes,
         'piecesJointes': piecesJointes,
         'statut': statut,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 }
@@ -79,10 +81,10 @@ class AttendanceModel {
   final DateTime date;
   final DateTime? heureArrivee;
   final DateTime? heureDepart;
-  final String statut; // present, absent, retard, conge
+  final String statut;
   final int retardMinutes;
   final String? justification;
-  final String methode; // manuel, qr, badge
+  final String methode;
   final String createdBy;
 
   AttendanceModel({
@@ -105,37 +107,40 @@ class AttendanceModel {
     return heureDepart!.difference(heureArrivee!);
   }
 
-  factory AttendanceModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory AttendanceModel.fromJson(Map<String, dynamic> json) {
     return AttendanceModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      employeePhoto: d['employeePhoto'],
-      date: (d['date'] as Timestamp).toDate(),
-      heureArrivee: (d['heureArrivee'] as Timestamp?)?.toDate(),
-      heureDepart: (d['heureDepart'] as Timestamp?)?.toDate(),
-      statut: d['statut'] ?? 'absent',
-      retardMinutes: d['retardMinutes'] ?? 0,
-      justification: d['justification'],
-      methode: d['methode'] ?? 'manuel',
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      employeePhoto: json['employeePhoto'] ?? json['employee_photo'],
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      heureArrivee: json['heureArrivee'] != null || json['heure_arrivee'] != null
+          ? DateTime.parse(json['heureArrivee'] ?? json['heure_arrivee'] ?? DateTime.now().toIso8601String())
+          : null,
+      heureDepart: json['heureDepart'] != null || json['heure_depart'] != null
+          ? DateTime.parse(json['heureDepart'] ?? json['heure_depart'] ?? DateTime.now().toIso8601String())
+          : null,
+      statut: json['statut'] ?? 'absent',
+      retardMinutes: json['retardMinutes'] ?? json['retard_minutes'] ?? 0,
+      justification: json['justification'],
+      methode: json['methode'] ?? 'manuel',
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'employeePhoto': employeePhoto,
-        'date': Timestamp.fromDate(date),
-        'heureArrivee': heureArrivee != null ? Timestamp.fromDate(heureArrivee!) : null,
-        'heureDepart': heureDepart != null ? Timestamp.fromDate(heureDepart!) : null,
+        'date': date.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'heureArrivee': heureArrivee?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'heureDepart': heureDepart?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'statut': statut,
         'retardMinutes': retardMinutes,
-        'justification': justification,
+        if (justification != null && justification!.isNotEmpty) 'justification': justification,
         'methode': methode,
         'createdBy': createdBy,
-        'dateStr': '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
       };
 }
 
@@ -172,40 +177,42 @@ class LeaveModel {
     required this.createdAt,
   });
 
-  factory LeaveModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory LeaveModel.fromJson(Map<String, dynamic> json) {
     return LeaveModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      employeePhoto: d['employeePhoto'],
-      type: d['type'] ?? '',
-      dateDebut: (d['dateDebut'] as Timestamp).toDate(),
-      dateFin: (d['dateFin'] as Timestamp).toDate(),
-      nombreJours: d['nombreJours'] ?? 0,
-      motif: d['motif'] ?? '',
-      statut: d['statut'] ?? 'en_attente',
-      commentaireRH: d['commentaireRH'],
-      validePar: d['validePar'],
-      dateValidation: (d['dateValidation'] as Timestamp?)?.toDate(),
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      employeePhoto: json['employeePhoto'] ?? json['employee_photo'],
+      type: json['type'] ?? '',
+      dateDebut: DateTime.parse(json['dateDebut'] ?? json['date_debut'] ?? DateTime.now().toIso8601String()),
+      dateFin: DateTime.parse(json['dateFin'] ?? json['date_fin'] ?? DateTime.now().toIso8601String()),
+      nombreJours: json['nombreJours'] ?? json['nombre_jours'] ?? 0,
+      motif: json['motif'] ?? '',
+      statut: json['statut'] ?? 'en_attente',
+      commentaireRH: json['commentaireRH'] ?? json['commentaire_rh'],
+      validePar: json['validePar'] ?? json['valide_par'],
+      dateValidation: json['dateValidation'] != null || json['date_validation'] != null
+          ? DateTime.parse(json['dateValidation'] ?? json['date_validation'] ?? DateTime.now().toIso8601String())
+          : null,
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'employeePhoto': employeePhoto,
         'type': type,
-        'dateDebut': Timestamp.fromDate(dateDebut),
-        'dateFin': Timestamp.fromDate(dateFin),
+        'dateDebut': dateDebut.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'dateFin': dateFin.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'nombreJours': nombreJours,
         'motif': motif,
         'statut': statut,
         'commentaireRH': commentaireRH,
         'validePar': validePar,
-        'dateValidation': dateValidation != null ? Timestamp.fromDate(dateValidation!) : null,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'dateValidation': dateValidation?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -224,7 +231,7 @@ class PayrollModel {
   final double cotisationsSociales;
   final double impots;
   final double netAPayer;
-  final String statut; // brouillon, validé, payé
+  final String statut;
   final DateTime? datePaiement;
   final DateTime createdAt;
   final String createdBy;
@@ -253,31 +260,33 @@ class PayrollModel {
   double get brutTotal => salaireBase + primes + bonus + (heuresSupp * tauxHeureSupp);
   double get totalDeductions => retenues + cotisationsSociales + impots;
 
-  factory PayrollModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory PayrollModel.fromJson(Map<String, dynamic> json) {
     return PayrollModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      mois: d['mois'] ?? 1,
-      annee: d['annee'] ?? DateTime.now().year,
-      salaireBase: (d['salaireBase'] as num?)?.toDouble() ?? 0,
-      primes: (d['primes'] as num?)?.toDouble() ?? 0,
-      bonus: (d['bonus'] as num?)?.toDouble() ?? 0,
-      heuresSupp: (d['heuresSupp'] as num?)?.toDouble() ?? 0,
-      tauxHeureSupp: (d['tauxHeureSupp'] as num?)?.toDouble() ?? 0,
-      retenues: (d['retenues'] as num?)?.toDouble() ?? 0,
-      cotisationsSociales: (d['cotisationsSociales'] as num?)?.toDouble() ?? 0,
-      impots: (d['impots'] as num?)?.toDouble() ?? 0,
-      netAPayer: (d['netAPayer'] as num?)?.toDouble() ?? 0,
-      statut: d['statut'] ?? 'brouillon',
-      datePaiement: (d['datePaiement'] as Timestamp?)?.toDate(),
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      mois: json['mois'] ?? 1,
+      annee: json['annee'] ?? DateTime.now().year,
+      salaireBase: (json['salaireBase'] ?? json['salaire_base'] ?? 0).toDouble(),
+      primes: (json['primes'] ?? 0).toDouble(),
+      bonus: (json['bonus'] ?? 0).toDouble(),
+      heuresSupp: (json['heuresSupp'] ?? json['heures_supp'] ?? 0).toDouble(),
+      tauxHeureSupp: (json['tauxHeureSupp'] ?? json['taux_heure_supp'] ?? 0).toDouble(),
+      retenues: (json['retenues'] ?? 0).toDouble(),
+      cotisationsSociales: (json['cotisationsSociales'] ?? json['cotisations_sociales'] ?? 0).toDouble(),
+      impots: (json['impots'] ?? 0).toDouble(),
+      netAPayer: (json['netAPayer'] ?? json['net_a_payer'] ?? 0).toDouble(),
+      statut: json['statut'] ?? 'brouillon',
+      datePaiement: json['datePaiement'] != null || json['date_paiement'] != null
+          ? DateTime.parse(json['datePaiement'] ?? json['date_paiement'] ?? DateTime.now().toIso8601String())
+          : null,
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'mois': mois,
@@ -292,8 +301,8 @@ class PayrollModel {
         'impots': impots,
         'netAPayer': netAPayer,
         'statut': statut,
-        'datePaiement': datePaiement != null ? Timestamp.fromDate(datePaiement!) : null,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'datePaiement': datePaiement?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 
@@ -367,33 +376,33 @@ class SanctionModel {
     required this.createdBy,
   });
 
-  factory SanctionModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory SanctionModel.fromJson(Map<String, dynamic> json) {
     return SanctionModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      type: d['type'] ?? '',
-      motif: d['motif'] ?? '',
-      date: (d['date'] as Timestamp).toDate(),
-      dureeSuspension: d['dureeSuspension'],
-      decisionPar: d['decisionPar'],
-      statut: d['statut'] ?? 'actif',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      type: json['type'] ?? '',
+      motif: json['motif'] ?? '',
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      dureeSuspension: json['dureeSuspension'] ?? json['duree_suspension'],
+      decisionPar: json['decisionPar'] ?? json['decision_par'],
+      statut: json['statut'] ?? 'actif',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'type': type,
         'motif': motif,
-        'date': Timestamp.fromDate(date),
+        'date': date.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'dureeSuspension': dureeSuspension,
         'decisionPar': decisionPar,
         'statut': statut,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 }
@@ -425,33 +434,33 @@ class TrainingModel {
     required this.createdBy,
   });
 
-  factory TrainingModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory TrainingModel.fromJson(Map<String, dynamic> json) {
     return TrainingModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      intitule: d['intitule'] ?? '',
-      date: (d['date'] as Timestamp).toDate(),
-      organisme: d['organisme'] ?? '',
-      dureeJours: d['dureeJours'] ?? 1,
-      attestationUrl: d['attestationUrl'],
-      notes: d['notes'],
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      intitule: json['intitule'] ?? '',
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      organisme: json['organisme'] ?? '',
+      dureeJours: json['dureeJours'] ?? json['duree_jours'] ?? 1,
+      attestationUrl: json['attestationUrl'] ?? json['attestation_url'],
+      notes: json['notes'],
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'intitule': intitule,
-        'date': Timestamp.fromDate(date),
+        'date': date.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'organisme': organisme,
         'dureeJours': dureeJours,
         'attestationUrl': attestationUrl,
         'notes': notes,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 }
@@ -481,23 +490,23 @@ class EvaluationModel {
     required this.createdAt,
   });
 
-  factory EvaluationModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory EvaluationModel.fromJson(Map<String, dynamic> json) {
     return EvaluationModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      annee: d['annee'] ?? DateTime.now().year,
-      note: (d['note'] as num?)?.toDouble() ?? 0,
-      commentaire: d['commentaire'] ?? '',
-      objectifs: List<Map<String, dynamic>>.from(d['objectifs'] ?? []),
-      evaluateurId: d['evaluateurId'] ?? '',
-      evaluateurNom: d['evaluateurNom'] ?? '',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      annee: json['annee'] ?? DateTime.now().year,
+      note: (json['note'] ?? 0).toDouble(),
+      commentaire: json['commentaire'] ?? '',
+      objectifs: List<Map<String, dynamic>>.from(json['objectifs'] ?? []),
+      evaluateurId: json['evaluateurId'] ?? json['evaluateur_id'] ?? '',
+      evaluateurNom: json['evaluateurNom'] ?? json['evaluateur_nom'] ?? '',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'annee': annee,
@@ -506,7 +515,7 @@ class EvaluationModel {
         'objectifs': objectifs,
         'evaluateurId': evaluateurId,
         'evaluateurNom': evaluateurNom,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -514,7 +523,7 @@ class DocumentModel {
   final String id;
   final String employeeId;
   final String employeeNom;
-  final String type; // contrat, diplome, cv, cni, certificat_medical
+  final String type;
   final String nom;
   final String url;
   final int tailleFichier;
@@ -533,29 +542,29 @@ class DocumentModel {
     required this.createdBy,
   });
 
-  factory DocumentModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory DocumentModel.fromJson(Map<String, dynamic> json) {
     return DocumentModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      type: d['type'] ?? '',
-      nom: d['nom'] ?? '',
-      url: d['url'] ?? '',
-      tailleFichier: d['tailleFichier'] ?? 0,
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      type: json['type'] ?? '',
+      nom: json['nom'] ?? '',
+      url: json['url'] ?? '',
+      tailleFichier: json['tailleFichier'] ?? json['taille_fichier'] ?? 0,
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'type': type,
         'nom': nom,
         'url': url,
         'tailleFichier': tailleFichier,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 }
@@ -569,7 +578,7 @@ class RecruitmentModel {
   final String typeContrat;
   final DateTime datePublication;
   final DateTime? dateLimite;
-  final String statut; // ouvert, ferme, pourvu
+  final String statut;
   final int nombreCandidatures;
   final String createdBy;
   final DateTime createdAt;
@@ -589,36 +598,38 @@ class RecruitmentModel {
     required this.createdAt,
   });
 
-  factory RecruitmentModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory RecruitmentModel.fromJson(Map<String, dynamic> json) {
     return RecruitmentModel(
-      id: doc.id,
-      poste: d['poste'] ?? '',
-      departementId: d['departementId'] ?? '',
-      departementNom: d['departementNom'] ?? '',
-      description: d['description'] ?? '',
-      typeContrat: d['typeContrat'] ?? '',
-      datePublication: (d['datePublication'] as Timestamp).toDate(),
-      dateLimite: (d['dateLimite'] as Timestamp?)?.toDate(),
-      statut: d['statut'] ?? 'ouvert',
-      nombreCandidatures: d['nombreCandidatures'] ?? 0,
-      createdBy: d['createdBy'] ?? '',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      poste: json['poste'] ?? '',
+      departementId: json['departementId'] ?? json['departement_id'] ?? '',
+      departementNom: json['departementNom'] ?? json['departement_nom'] ?? '',
+      description: json['description'] ?? '',
+      typeContrat: json['typeContrat'] ?? json['type_contrat'] ?? '',
+      datePublication: DateTime.parse(json['datePublication'] ?? json['date_publication'] ?? DateTime.now().toIso8601String()),
+      dateLimite: json['dateLimite'] != null || json['date_limite'] != null
+          ? DateTime.parse(json['dateLimite'] ?? json['date_limite'] ?? DateTime.now().toIso8601String())
+          : null,
+      statut: json['statut'] ?? 'ouvert',
+      nombreCandidatures: json['nombreCandidatures'] ?? json['nombre_candidatures'] ?? 0,
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'poste': poste,
         'departementId': departementId,
         'departementNom': departementNom,
         'description': description,
         'typeContrat': typeContrat,
-        'datePublication': Timestamp.fromDate(datePublication),
-        'dateLimite': dateLimite != null ? Timestamp.fromDate(dateLimite!) : null,
+        'datePublication': datePublication.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'dateLimite': dateLimite?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'statut': statut,
         'nombreCandidatures': nombreCandidatures,
         'createdBy': createdBy,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -645,22 +656,22 @@ class NotificationModel {
     required this.createdAt,
   });
 
-  factory NotificationModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: doc.id,
-      userId: d['userId'] ?? '',
-      titre: d['titre'] ?? '',
-      message: d['message'] ?? '',
-      type: d['type'] ?? '',
-      isRead: d['isRead'] ?? false,
-      actionRoute: d['actionRoute'],
-      contractId: d['contractId'],
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? json['user_id'] ?? '',
+      titre: json['titre'] ?? '',
+      message: json['message'] ?? '',
+      type: json['type'] ?? '',
+      isRead: json['isRead'] ?? json['is_read'] ?? false,
+      actionRoute: json['actionRoute'] ?? json['action_route'],
+      contractId: json['contractId'] ?? json['contract_id'],
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'userId': userId,
         'titre': titre,
         'message': message,
@@ -668,7 +679,7 @@ class NotificationModel {
         'isRead': isRead,
         'actionRoute': actionRoute,
         'contractId': contractId,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -695,22 +706,22 @@ class MessageModel {
     required this.createdAt,
   });
 
-  factory MessageModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory MessageModel.fromJson(Map<String, dynamic> json) {
     return MessageModel(
-      id: doc.id,
-      conversationId: d['conversationId'] ?? '',
-      senderId: d['senderId'] ?? '',
-      senderNom: d['senderNom'] ?? '',
-      senderPhoto: d['senderPhoto'],
-      contenu: d['contenu'] ?? '',
-      piecesJointes: List<String>.from(d['piecesJointes'] ?? []),
-      isRead: d['isRead'] ?? false,
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      conversationId: json['conversationId'] ?? json['conversation_id'] ?? '',
+      senderId: json['senderId'] ?? json['sender_id'] ?? '',
+      senderNom: json['senderNom'] ?? json['sender_nom'] ?? '',
+      senderPhoto: json['senderPhoto'] ?? json['sender_photo'],
+      contenu: json['contenu'] ?? '',
+      piecesJointes: List<String>.from(json['piecesJointes'] ?? json['pieces_jointes'] ?? []),
+      isRead: json['isRead'] ?? json['is_read'] ?? false,
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'conversationId': conversationId,
         'senderId': senderId,
         'senderNom': senderNom,
@@ -718,7 +729,7 @@ class MessageModel {
         'contenu': contenu,
         'piecesJointes': piecesJointes,
         'isRead': isRead,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -726,7 +737,7 @@ class AgendaModel {
   final String id;
   final String titre;
   final String? description;
-  final String type; // reunion, rdv, conge, evenement
+  final String type;
   final DateTime dateDebut;
   final DateTime dateFin;
   final List<String> participants;
@@ -745,30 +756,30 @@ class AgendaModel {
     required this.createdAt,
   });
 
-  factory AgendaModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory AgendaModel.fromJson(Map<String, dynamic> json) {
     return AgendaModel(
-      id: doc.id,
-      titre: d['titre'] ?? '',
-      description: d['description'],
-      type: d['type'] ?? '',
-      dateDebut: (d['dateDebut'] as Timestamp).toDate(),
-      dateFin: (d['dateFin'] as Timestamp).toDate(),
-      participants: List<String>.from(d['participants'] ?? []),
-      createdBy: d['createdBy'] ?? '',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      titre: json['titre'] ?? '',
+      description: json['description'],
+      type: json['type'] ?? '',
+      dateDebut: DateTime.parse(json['dateDebut'] ?? json['date_debut'] ?? DateTime.now().toIso8601String()),
+      dateFin: DateTime.parse(json['dateFin'] ?? json['date_fin'] ?? DateTime.now().toIso8601String()),
+      participants: List<String>.from(json['participants'] ?? []),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'titre': titre,
         'description': description,
         'type': type,
-        'dateDebut': Timestamp.fromDate(dateDebut),
-        'dateFin': Timestamp.fromDate(dateFin),
+        'dateDebut': dateDebut.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'dateFin': dateFin.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'participants': participants,
         'createdBy': createdBy,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -776,7 +787,7 @@ class AuditLogModel {
   final String id;
   final String userId;
   final String userNom;
-  final String action; // ajout, modification, suppression
+  final String action;
   final String collection;
   final String documentId;
   final String description;
@@ -793,28 +804,28 @@ class AuditLogModel {
     required this.createdAt,
   });
 
-  factory AuditLogModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory AuditLogModel.fromJson(Map<String, dynamic> json) {
     return AuditLogModel(
-      id: doc.id,
-      userId: d['userId'] ?? '',
-      userNom: d['userNom'] ?? '',
-      action: d['action'] ?? '',
-      collection: d['collection'] ?? '',
-      documentId: d['documentId'] ?? '',
-      description: d['description'] ?? '',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? json['user_id'] ?? '',
+      userNom: json['userNom'] ?? json['user_nom'] ?? '',
+      action: json['action'] ?? '',
+      collection: json['collection'] ?? '',
+      documentId: json['documentId'] ?? json['document_id'] ?? '',
+      description: json['description'] ?? '',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'userId': userId,
         'userNom': userNom,
         'action': action,
         'collection': collection,
         'documentId': documentId,
         'description': description,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
 }
 
@@ -826,7 +837,7 @@ class BonusModel {
   final double montant;
   final String motif;
   final DateTime dateAttribution;
-  final String statut; // active, payé, annulé
+  final String statut;
   final DateTime createdAt;
   final String createdBy;
 
@@ -843,31 +854,31 @@ class BonusModel {
     required this.createdBy,
   });
 
-  factory BonusModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory BonusModel.fromJson(Map<String, dynamic> json) {
     return BonusModel(
-      id: doc.id,
-      employeeId: d['employeeId'] ?? '',
-      employeeNom: d['employeeNom'] ?? '',
-      type: d['type'] ?? '',
-      montant: (d['montant'] as num?)?.toDouble() ?? 0,
-      motif: d['motif'] ?? '',
-      dateAttribution: (d['dateAttribution'] as Timestamp).toDate(),
-      statut: d['statut'] ?? 'active',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      id: json['id'] ?? '',
+      employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
+      employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
+      type: json['type'] ?? '',
+      montant: (json['montant'] ?? 0).toDouble(),
+      motif: json['motif'] ?? '',
+      dateAttribution: DateTime.parse(json['dateAttribution'] ?? json['date_attribution'] ?? DateTime.now().toIso8601String()),
+      statut: json['statut'] ?? 'active',
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'type': type,
         'montant': montant,
         'motif': motif,
-        'dateAttribution': Timestamp.fromDate(dateAttribution),
+        'dateAttribution': dateAttribution.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'statut': statut,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
       };
 }

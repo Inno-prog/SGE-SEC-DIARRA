@@ -48,6 +48,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
   String _statut = AppConstants.statusActive;
   String? _departementId;
   String? _departementNom;
+  String? _posteTitre;
   DateTime _dateNaissance = DateTime(1990, 1, 1);
   DateTime _dateEmbauche = DateTime.now();
 
@@ -88,6 +89,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
     _telCtrl.text = emp.telephone;
     _emailCtrl.text = emp.email;
     _posteCtrl.text = emp.poste;
+    _posteTitre = emp.poste;
     _serviceCtrl.text = emp.service;
     _gradeCtrl.text = emp.grade;
     _salaireCtrl.text = emp.salaire.toString();
@@ -289,7 +291,8 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
     }
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
+      final employeeService = ref.read(employeeApiServiceProvider);
+      final documentService = ref.read(documentApiServiceProvider);
       final user = ref.read(currentUserProvider)!;
 
       String? photoUrl = _existing?.photoUrl;
@@ -299,10 +302,9 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
       String? diplomeFileId = _existing?.diplomeFileId;
       String? autresFileId = _existing?.autresFileId;
 
-      final matricule =
-          _existing?.matricule ?? await service.generateMatricule();
-
-      final uploads = <Future<void>>[];
+      final matriculeResponse = await employeeService.generateMatricule();
+      // generateMatricule returns {"matricule": "EMP0001"} directly, not wrapped in "data"
+      final matricule = _existing?.matricule ?? matriculeResponse['matricule'] as String? ?? '';
 
       if (_photoFile != null) {
         // Encode photo directly as base64 data URL (avoids chunk storage issues).
@@ -314,15 +316,85 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         photoUrl = 'data:image/jpeg;base64,$base64Str';
       }
 
+      // Step 1: Create or update employee FIRST to get the employee UUID
+      String employeeId;
+      if (_existing != null) {
+        employeeId = _existing!.id;
+      } else {
+        // Create employee without document IDs first
+        // Convert sexe from 'Masculin'/'Féminin' to 'M'/'F' for backend
+        final sexeBackend = _sexe == 'Masculin' ? 'M' : 'F';
+        // Ensure salaire is positive (backend requires > 0)
+        final salaireValue = double.tryParse(_salaireCtrl.text) ?? 0;
+        if (salaireValue <= 0) {
+          if (mounted) {
+            showSnack(context, 'Le salaire doit être supérieur à 0', isError: true);
+            setState(() => _loading = false);
+          }
+          return;
+        }
+
+        final empForCreate = EmployeeModel(
+          id: '',
+          matricule: matricule,
+          nom: _nomCtrl.text.trim(),
+          prenom: _prenomCtrl.text.trim(),
+          sexe: sexeBackend,
+          dateNaissance: _dateNaissance,
+          photoUrl: photoUrl,
+          adresse: _adresseCtrl.text.trim(),
+          telephone: _telCtrl.text.trim(),
+          email: _emailCtrl.text.trim(),
+          situationMatrimoniale: _situation,
+          nationalite: _nationaliteCtrl.text.trim(),
+          contactUrgence: _urgNomCtrl.text.isNotEmpty
+              ? EmergencyContact(
+                  nom: _urgNomCtrl.text,
+                  telephone: _urgTelCtrl.text,
+                  relation: _urgRelCtrl.text,
+                )
+              : null,
+          poste: _posteTitre?.trim() ?? _posteCtrl.text.trim(),
+          service: _serviceCtrl.text.trim(),
+          departementId: _departementId!,
+          departementNom: _departementNom!,
+          grade: _gradeCtrl.text.trim(),
+          dateEmbauche: _dateEmbauche,
+          typeContrat: _typeContrat,
+          salaire: salaireValue,
+          statut: _statut,
+          createdAt: DateTime.now(),
+          createdBy: user.id,
+          contratSigneFileId: null,
+          demandeFileId: null,
+          cvFileId: null,
+          diplomeFileId: null,
+          autresFileId: null,
+          updatedAt: DateTime.now(),
+          updatedBy: user.id,
+        );
+        final response = await employeeService.createEmployee(empForCreate);
+        employeeId = response['employee']['id'] as String;
+        if (mounted) showSnack(context, 'Employé créé, upload des documents...');
+      }
+
+      // Step 2: Upload documents using the employee UUID
+      final uploads = <Future<void>>[];
+
       if (_contratSigneFile != null) {
         uploads.add(
           _uploadWithRetry(
             () async {
-              final fileId = await service.uploadDocument(
-                _contratSigneFile!,
-                '${AppConstants.storageDocuments}/$matricule/contrat_signe.pdf',
+              final bytes = _contratSigneFile! is Uint8List
+                  ? _contratSigneFile! as Uint8List
+                  : await (_contratSigneFile! as File).readAsBytes();
+              final response = await documentService.uploadDocument(
+                employeeId,  // Use employee UUID, not matricule
+                'contrat',  // Prisma enum: contrat (pas contrat_signe)
+                _contratSigneName ?? 'contrat_signe.pdf',
+                bytes,
               );
-              contratSigneFileId = fileId;
+              contratSigneFileId = response['document']['id'] as String?;
             },
             3,
             'contrat signé',
@@ -334,11 +406,16 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         uploads.add(
           _uploadWithRetry(
             () async {
-              final fileId = await service.uploadDocument(
-                _demandeFile!,
-                '${AppConstants.storageDocuments}/$matricule/demande.pdf',
+              final bytes = _demandeFile! is Uint8List
+                  ? _demandeFile! as Uint8List
+                  : await (_demandeFile! as File).readAsBytes();
+              final response = await documentService.uploadDocument(
+                employeeId,
+                'autre',  // Prisma enum: autre (pas demande)
+                _demandeName ?? 'demande.pdf',
+                bytes,
               );
-              demandeFileId = fileId;
+              demandeFileId = response['document']['id'] as String?;
             },
             3,
             'demande',
@@ -350,11 +427,16 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         uploads.add(
           _uploadWithRetry(
             () async {
-              final fileId = await service.uploadDocument(
-                _cvFile!,
-                '${AppConstants.storageDocuments}/$matricule/cv.pdf',
+              final bytes = _cvFile! is Uint8List
+                  ? _cvFile! as Uint8List
+                  : await (_cvFile! as File).readAsBytes();
+              final response = await documentService.uploadDocument(
+                employeeId,
+                'cv',  // Prisma enum: cv (OK)
+                _cvName ?? 'cv.pdf',
+                bytes,
               );
-              cvFileId = fileId;
+              cvFileId = response['document']['id'] as String?;
             },
             3,
             'CV',
@@ -366,11 +448,16 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         uploads.add(
           _uploadWithRetry(
             () async {
-              final fileId = await service.uploadDocument(
-                _diplomeFile!,
-                '${AppConstants.storageDocuments}/$matricule/diplome.pdf',
+              final bytes = _diplomeFile! is Uint8List
+                  ? _diplomeFile! as Uint8List
+                  : await (_diplomeFile! as File).readAsBytes();
+              final response = await documentService.uploadDocument(
+                employeeId,
+                'diplome',  // Prisma enum: diplome (OK)
+                _diplomeName ?? 'diplome.pdf',
+                bytes,
               );
-              diplomeFileId = fileId;
+              diplomeFileId = response['document']['id'] as String?;
             },
             3,
             'diplôme',
@@ -382,11 +469,16 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         uploads.add(
           _uploadWithRetry(
             () async {
-              final fileId = await service.uploadDocument(
-                _autresFile!,
-                '${AppConstants.storageDocuments}/$matricule/autres.pdf',
+              final bytes = _autresFile! is Uint8List
+                  ? _autresFile! as Uint8List
+                  : await (_autresFile! as File).readAsBytes();
+              final response = await documentService.uploadDocument(
+                employeeId,
+                'autre',  // Prisma enum: autre (singulier)
+                _autresName ?? 'autres.pdf',
+                bytes,
               );
-              autresFileId = fileId;
+              autresFileId = response['document']['id'] as String?;
             },
             3,
             'autres',
@@ -405,19 +497,24 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         if (mounted)
           showSnack(
             context,
-            'Uploads terminés, enregistrement...',
+            'Uploads terminés, mise à jour employé...',
             isError: false,
           );
       } on TimeoutException {
         throw TimeoutException('Délai d\'upload dépassé (timeout)');
       }
 
+      // Step 3: Update employee with document IDs
+      // Convert sexe from 'Masculin'/'Féminin' to 'M'/'F' for backend
+      final sexeBackend = _sexe == 'Masculin' ? 'M' : 'F';
+      final salaireValue = double.tryParse(_salaireCtrl.text) ?? 0;
+
       final emp = EmployeeModel(
-        id: _existing?.id ?? '',
+        id: employeeId,
         matricule: matricule,
         nom: _nomCtrl.text.trim(),
         prenom: _prenomCtrl.text.trim(),
-        sexe: _sexe,
+        sexe: sexeBackend,
         dateNaissance: _dateNaissance,
         photoUrl: photoUrl,
         adresse: _adresseCtrl.text.trim(),
@@ -432,14 +529,14 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
                 relation: _urgRelCtrl.text,
               )
             : null,
-        poste: _posteCtrl.text.trim(),
+        poste: _posteTitre?.trim() ?? _posteCtrl.text.trim(),
         service: _serviceCtrl.text.trim(),
         departementId: _departementId!,
         departementNom: _departementNom!,
         grade: _gradeCtrl.text.trim(),
         dateEmbauche: _dateEmbauche,
         typeContrat: _typeContrat,
-        salaire: double.tryParse(_salaireCtrl.text) ?? 0,
+        salaire: salaireValue,
         statut: _statut,
         createdAt: _existing?.createdAt ?? DateTime.now(),
         createdBy: user.id,
@@ -448,32 +545,24 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
         cvFileId: cvFileId,
         diplomeFileId: diplomeFileId,
         autresFileId: autresFileId,
+        updatedAt: DateTime.now(),
+        updatedBy: user.id,
       );
 
       if (_existing != null) {
-        await service.updateEmployee(emp.copyWith());
-        await service.addAuditLog(
-          userId: user.id,
-          userNom: user.fullName,
-          action: 'modification',
-          collection: AppConstants.colEmployees,
-          documentId: emp.id,
-          description: 'Modification de ${emp.fullName}',
-        );
+        await employeeService.updateEmployee(emp.id, emp);
         if (mounted) showSnack(context, 'Employé mis à jour');
       } else {
-        final id = await service.addEmployee(emp);
-        await service.addAuditLog(
-          userId: user.id,
-          userNom: user.fullName,
-          action: 'ajout',
-          collection: AppConstants.colEmployees,
-          documentId: id,
-          description: 'Ajout de ${emp.fullName}',
-        );
+        await employeeService.updateEmployee(employeeId, emp);
         if (mounted) showSnack(context, 'Employé ajouté avec succès');
       }
-      if (mounted) context.go(AppRoutes.employees);
+      if (mounted) {
+        ref.invalidate(allEmployeesProvider);
+        // employeesProvider is a family provider - invalidate with common filter combos
+        ref.invalidate(employeesProvider({'search': null, 'departmentId': null, 'statut': null}));
+        ref.invalidate(employeesProvider({'search': '', 'departmentId': null, 'statut': null}));
+        context.go(AppRoutes.employees);
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -512,6 +601,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
     }
 
     final depts = ref.watch(departmentsProvider);
+    final positions = ref.watch(positionsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -788,23 +878,48 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppTextField(
-                        label: 'Poste *',
-                        controller: _posteCtrl,
-                        validator: (v) => v!.isEmpty ? 'Requis' : null,
+                positions.when(
+                  data: (posList) => Row(
+                    children: [
+                      Expanded(
+                        child: AppDropdown<String>(
+                          label: 'Poste *',
+                          value: _posteTitre,
+                          items: posList
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p.titre,
+                                  child: Text(p.titre),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _posteTitre = v),
+                          validator: (v) => v == null ? 'Requis' : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppTextField(
-                        label: 'Service',
-                        controller: _serviceCtrl,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: AppTextField(
+                          label: 'Service',
+                          controller: _serviceCtrl,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  loading: () => Row(
+                    children: [
+                      Expanded(child: AppTextField(label: 'Poste *', readOnly: true)),
+                      const SizedBox(width: 12),
+                      Expanded(child: AppTextField(label: 'Service', controller: _serviceCtrl)),
+                    ],
+                  ),
+                  error: (e, _) => Row(
+                    children: [
+                      Expanded(child: AppTextField(label: 'Poste *', controller: _posteCtrl, validator: (v) => v!.isEmpty ? 'Requis' : null)),
+                      const SizedBox(width: 12),
+                      Expanded(child: AppTextField(label: 'Service', controller: _serviceCtrl)),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -825,8 +940,7 @@ class _EmployeeFormScreenState extends ConsumerState<EmployeeFormScreen> {
                                   AppConstants.contractCDI,
                                   AppConstants.contractCDD,
                                   AppConstants.contractStage,
-                                  AppConstants.contractConsultant,
-                                  AppConstants.contractPrestataire,
+                                  AppConstants.contractFreelance,
                                 ]
                                 .map(
                                   (t) => DropdownMenuItem(

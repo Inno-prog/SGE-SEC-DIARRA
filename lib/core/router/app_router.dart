@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/providers.dart';
-import '../widgets/common_widgets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../core/constants/app_constants.dart';
@@ -18,17 +17,18 @@ import '../../screens/contracts/contract_detail_screen.dart';
 import '../../screens/attendance/attendance_screen.dart';
 import '../../screens/leaves/leaves_screen.dart';
 import '../../screens/absences/absences_screen.dart';
-import '../../screens/users/users_screen.dart';
+import '../../screens/bonuses/bonuses_screen.dart';
+import '../../screens/payroll/payroll_screen.dart';
 import '../../screens/notifications/notifications_screen.dart';
-import '../../screens/agenda/agenda_screen.dart';
-import '../../screens/reports/reports_screen.dart' hide SettingsScreen, SecurityScreen;
+import '../../screens/reports/reports_screen.dart' hide SettingsScreen;
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/security/security_screen.dart';
+import '../../screens/users/users_screen.dart';
 import '../../screens/schedules/schedules_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
-  final initialLocation = ref.read(initialLocationProvider);
+  final initialLocation = ref.watch(initialLocationProvider);
 
   return GoRouter(
     initialLocation: initialLocation,
@@ -53,19 +53,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ),
     redirect: (context, state) {
-      final isLoggedIn = authState.value != null;
-      final isLoading = authState.isLoading;
+      final authAsync = authState;
+      final isLoading = authAsync.isLoading;
+      final isLoggedIn = authAsync.hasValue && authAsync.value != null;
+      final user = authAsync.value;
 
-      if (isLoading && state.matchedLocation != AppRoutes.login) {
-        return AppRoutes.login;
+      // If still loading, don't redirect (show loading on current route)
+      if (isLoading) {
+        return null;
       }
 
+      // Not logged in and not on login page -> redirect to login
       if (!isLoggedIn && state.matchedLocation != AppRoutes.login) {
         return AppRoutes.login;
       }
 
+      // Logged in and on login page -> redirect to dashboard or last location
       if (isLoggedIn && state.matchedLocation == AppRoutes.login) {
-        final user = authState.value;
         if (user != null && user.mustChangePassword) {
           return AppRoutes.security;
         }
@@ -74,14 +78,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Force redirect to security if mustChangePassword and not already there
-      final user = authState.value;
       if (user != null &&
           user.mustChangePassword &&
           state.matchedLocation != AppRoutes.security) {
         return AppRoutes.security;
       }
 
-      if (state.matchedLocation.startsWith('/')) {
+      // Save last location for authenticated routes (debounced)
+      if (isLoggedIn && state.matchedLocation.startsWith('/') && state.matchedLocation != AppRoutes.login) {
+        // Use a simple debounce by only saving occasionally
         Future.microtask(() async {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('last_location', state.matchedLocation);
@@ -119,6 +124,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: AppRoutes.attendance, builder: (_, __) => const AttendanceScreen()),
           GoRoute(path: AppRoutes.leaves, builder: (_, __) => const LeavesScreen()),
           GoRoute(path: AppRoutes.absences, builder: (_, __) => const AbsencesScreen()),
+          GoRoute(path: AppRoutes.bonuses, builder: (_, __) => const BonusesScreen()),
+          GoRoute(path: AppRoutes.payroll, builder: (_, __) => const PayrollScreen()),
           GoRoute(path: AppRoutes.users, builder: (_, __) => const UsersScreen()),
           GoRoute(path: AppRoutes.notifications, builder: (_, __) => const NotificationsScreen()),
           GoRoute(path: AppRoutes.agenda, builder: (_, __) => const AgendaScreen()),
@@ -167,7 +174,7 @@ class _WideLayout extends ConsumerWidget {
 
 class _NarrowLayout extends ConsumerWidget {
   final Widget child;
-  const _NarrowLayout({super.key, required this.child});
+  const _NarrowLayout({required this.child});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -208,7 +215,7 @@ class _SideNav extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.business, color: Colors.white, size: 28),
@@ -271,7 +278,7 @@ class _SideNav extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: GestureDetector(
               onTap: () async {
-                await ref.read(authServiceProvider).signOut();
+                await ref.read(authStateProvider.notifier).signOut();
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -299,11 +306,39 @@ class _SideNav extends ConsumerWidget {
     final visible = groups.where((g) => g.items.isNotEmpty).toList();
 
     if (role == AppConstants.roleAdmin || role == AppConstants.roleDirector) {
-      return visible
-          .map((g) => _NavGroupTile(group: g, currentLocation: currentLocation))
-          .toList();
+      // For admin/director: show dashboard as standalone item, then groups
+      final dashboardItem = visible.isNotEmpty ? visible.first.items.firstWhere(
+        (i) => i.route == AppRoutes.dashboard,
+        orElse: () => _NavItemData(Icons.dashboard_outlined, 'Tableau de bord', AppRoutes.dashboard),
+      ) : null;
+
+      final widgets = <Widget>[];
+
+      // Add dashboard as standalone item at top
+      if (dashboardItem != null) {
+        widgets.add(_NavItem(
+          icon: dashboardItem.icon,
+          label: dashboardItem.label,
+          route: dashboardItem.route,
+          isActive: currentLocation.startsWith(dashboardItem.route),
+        ));
+        widgets.add(const SizedBox(height: 8)); // Small separator
+      }
+
+      // Add remaining groups (excluding dashboard from first group)
+      for (final group in visible) {
+        final filteredItems = group.items.where((i) => i.route != AppRoutes.dashboard).toList();
+        if (filteredItems.isNotEmpty) {
+          widgets.add(_NavGroupTile(
+            group: _NavGroup(group.icon, group.title, filteredItems),
+            currentLocation: currentLocation,
+          ));
+        }
+      }
+      return widgets;
     }
 
+    // For other roles: flat list (existing behavior)
     return visible.expand((g) => g.items).map((item) {
       final isActive = currentLocation.startsWith(item.route);
       return _NavItem(
@@ -326,6 +361,8 @@ class _SideNav extends ConsumerWidget {
       _NavItemData(Icons.beach_access_outlined, 'Congés', AppRoutes.leaves),
       _NavItemData(Icons.event_busy_outlined, 'Absences', AppRoutes.absences),
       _NavItemData(Icons.schedule_outlined, 'Horaires', AppRoutes.schedules),
+      _NavItemData(Icons.payments_outlined, 'Primes', AppRoutes.bonuses),
+      _NavItemData(Icons.money_outlined, 'Paie', AppRoutes.payroll),
       _NavItemData(Icons.calendar_month_outlined, 'Agenda', AppRoutes.agenda),
       _NavItemData(Icons.bar_chart_outlined, 'Rapports', AppRoutes.reports),
       _NavItemData(Icons.manage_accounts_outlined, 'Utilisateurs', AppRoutes.users),
@@ -334,12 +371,12 @@ class _SideNav extends ConsumerWidget {
     ].where((i) => routes.contains(i.route)).toList();
 
     final groups = [
-      _NavGroup(Icons.dashboard_outlined, 'Pilotage',
+      _NavGroup(Icons.dashboard_outlined, 'Tableau de bord',
           filter([AppRoutes.dashboard])),
       _NavGroup(Icons.groups_outlined, 'Personnel',
           filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
       _NavGroup(Icons.fact_check_outlined, 'Suivi',
-          filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
+          filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.bonuses, AppRoutes.payroll])),
       _NavGroup(Icons.admin_panel_settings_outlined, 'Administration',
           filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.users, AppRoutes.settings, AppRoutes.security])),
     ];
@@ -347,22 +384,22 @@ class _SideNav extends ConsumerWidget {
     switch (role) {
       case AppConstants.roleEmployee:
         return [
-          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.dashboard_outlined, 'Tableau de bord', filter([AppRoutes.dashboard])),
           _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves])),
           _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.settings, AppRoutes.security])),
         ];
       case AppConstants.roleChefService:
         return [
-          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.dashboard_outlined, 'Tableau de bord', filter([AppRoutes.dashboard])),
           _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees])),
           _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
           _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.settings, AppRoutes.security])),
         ];
       case AppConstants.roleRH:
         return [
-          _NavGroup(Icons.dashboard_outlined, 'Pilotage', filter([AppRoutes.dashboard])),
+          _NavGroup(Icons.dashboard_outlined, 'Tableau de bord', filter([AppRoutes.dashboard])),
           _NavGroup(Icons.groups_outlined, 'Personnel', filter([AppRoutes.employees, AppRoutes.departments, AppRoutes.positions, AppRoutes.contracts])),
-          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules])),
+          _NavGroup(Icons.fact_check_outlined, 'Suivi', filter([AppRoutes.attendance, AppRoutes.leaves, AppRoutes.absences, AppRoutes.schedules, AppRoutes.bonuses, AppRoutes.payroll])),
           _NavGroup(Icons.admin_panel_settings_outlined, 'Administration', filter([AppRoutes.agenda, AppRoutes.reports, AppRoutes.settings, AppRoutes.security])),
         ];
       default:

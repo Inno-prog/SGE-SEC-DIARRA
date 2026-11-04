@@ -92,7 +92,7 @@ class _LeaveList extends ConsumerWidget {
     final user = ref.watch(currentUserProvider)!;
     final leaves = ref.watch(
       leavesProvider(
-        LeaveParams(employeeId: isRH ? null : user.employeeId, statut: statut),
+        LeaveParams(employeeId: isRH ? null : user.employeeId, status: statut),
       ),
     );
 
@@ -259,15 +259,25 @@ class _LeaveTile extends ConsumerWidget {
       if (commentaire == null) return;
     }
     await ref
-        .read(firestoreServiceProvider)
+        .read(leaveApiServiceProvider)
         .updateLeaveStatus(leave.id, statut, user.fullName, commentaire);
-    if (context.mounted)
+    if (context.mounted) {
+      // Invalider les providers pour rafraîchir les onglets
+      final currentUser = ref.read(currentUserProvider)!;
+      final isRH = currentUser.role == AppConstants.roleAdmin ||
+          currentUser.role == AppConstants.roleRH ||
+          currentUser.role == AppConstants.roleDirector;
+      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leavePending)));
+      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leaveApproved)));
+      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leaveRejected)));
+      ref.invalidate(pendingLeavesProvider);
       showSnack(
         context,
         statut == AppConstants.leaveApproved
             ? 'Congé approuvé'
             : 'Congé refusé',
       );
+    }
   }
 }
 
@@ -298,7 +308,6 @@ class _CommentDialogState extends State<_CommentDialog> {
         maxLines: 3,
       ),
       actions: [
-          NotificationBell(),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Annuler'),
@@ -393,8 +402,8 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
     }
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
-      await service.addLeave(
+      final leaveService = ref.read(leaveApiServiceProvider);
+      await leaveService.createLeave(
         LeaveModel(
           id: '',
           employeeId: _employeeId!,
@@ -409,6 +418,14 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
         ),
       );
       if (mounted) {
+        // Invalidation AVANT Navigator.pop
+        // Invalider avec les mêmes paramètres que dans _LeaveList
+        final user = ref.read(currentUserProvider)!;
+        final isRH = user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleRH ||
+            user.role == AppConstants.roleDirector;
+        ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : user.employeeId, status: AppConstants.leavePending)));
+        ref.invalidate(pendingLeavesProvider);
         Navigator.pop(context);
         showSnack(context, 'Demande de congé soumise');
       }

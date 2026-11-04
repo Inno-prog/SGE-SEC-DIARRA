@@ -239,10 +239,14 @@ class _StatsGrid extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 3 : 2,
+        crossAxisCount: MediaQuery.of(context).size.width > 900
+            ? 3
+            : MediaQuery.of(context).size.width > 500
+                ? 2
+                : 1,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.4,
+        childAspectRatio: 3.2,
       ),
       itemCount: items.length,
       itemBuilder: (_, i) => StatCard(
@@ -529,10 +533,10 @@ class _ChefServiceDashboard extends ConsumerWidget {
             GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
+              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.4,
+              childAspectRatio: 3.2,
               children: [
                 StatCard(
                   title: 'Mon équipe',
@@ -599,10 +603,10 @@ class _EmployeeDashboard extends ConsumerWidget {
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
+                    crossAxisCount: MediaQuery.of(context).size.width > 600 ? 2 : 1,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 1.4,
+                    childAspectRatio: 3.2,
                     children: [
                       StatCard(
                         title: 'Mes congés',

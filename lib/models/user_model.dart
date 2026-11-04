@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class UserModel {
   final String id;
   final String email;
@@ -40,28 +38,32 @@ class UserModel {
   bool hasPermission(String permission) =>
       role == 'admin' || permissions.contains(permission);
 
-  factory UserModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: doc.id,
-      email: data['email'] ?? '',
-      nom: data['nom'] ?? '',
-      prenom: data['prenom'] ?? '',
-      role: data['role'] ?? 'employee',
-      employeeId: data['employeeId'],
-      photoUrl: data['photoUrl'],
-      isActive: data['isActive'] ?? true,
-twoFactorEnabled: data['twoFactorEnabled'] ?? false,
-        createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        lastLogin: (data['lastLogin'] as Timestamp?)?.toDate(),
-        permissions: List<String>.from(data['permissions'] ?? []),
-        darkMode: data['darkMode'] ?? false,
-        emailNotifications: data['emailNotifications'] ?? true,
-        mustChangePassword: data['mustChangePassword'] ?? false,
+      id: json['id'] ?? '',
+      email: json['email'] ?? '',
+      nom: json['nom'] ?? '',
+      prenom: json['prenom'] ?? '',
+      role: json['role'] ?? 'employee',
+      employeeId: json['employeeId'] ?? json['employee_id'],
+      photoUrl: json['photoUrl'] ?? json['photo_url'],
+      isActive: json['isActive'] ?? json['is_active'] ?? true,
+      twoFactorEnabled: json['twoFactorEnabled'] ?? json['two_factor_enabled'] ?? false,
+      createdAt: json['createdAt'] != null || json['created_at'] != null
+          ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
+      lastLogin: json['lastLogin'] != null || json['last_login'] != null
+          ? DateTime.parse(json['lastLogin'] ?? json['last_login'] ?? DateTime.now().toIso8601String())
+          : null,
+      permissions: List<String>.from(json['permissions'] ?? []),
+      darkMode: json['darkMode'] ?? json['dark_mode'] ?? false,
+      emailNotifications: json['emailNotifications'] ?? json['email_notifications'] ?? true,
+      mustChangePassword: json['mustChangePassword'] ?? json['must_change_password'] ?? false,
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'email': email,
         'nom': nom,
         'prenom': prenom,
@@ -70,8 +72,8 @@ twoFactorEnabled: data['twoFactorEnabled'] ?? false,
         'photoUrl': photoUrl,
         'isActive': isActive,
         'twoFactorEnabled': twoFactorEnabled,
-        'createdAt': Timestamp.fromDate(createdAt),
-        'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
+        'createdAt': createdAt.toIso8601String(),
+        'lastLogin': lastLogin?.toIso8601String(),
         'permissions': permissions,
         'darkMode': darkMode,
         'emailNotifications': emailNotifications,

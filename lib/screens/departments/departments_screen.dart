@@ -2,16 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
-import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/department_model.dart';
-import '../../models/employee_model.dart';
 
-class DepartmentsScreen extends ConsumerWidget {
+class DepartmentsScreen extends ConsumerStatefulWidget {
   const DepartmentsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DepartmentsScreen> createState() => _DepartmentsScreenState();
+}
+
+class _DepartmentsScreenState extends ConsumerState<DepartmentsScreen> {
+  String _search = '';
+
+  @override
+  Widget build(BuildContext context) {
     final depts = ref.watch(departmentsProvider);
     return Scaffold(
       appBar: AppBar(
@@ -22,24 +27,26 @@ class DepartmentsScreen extends ConsumerWidget {
         title: const Text('Départements'),
         actions: [NotificationBell()],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showForm(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Nouveau département'),
-      ),
       body: depts.when(
-        data: (list) => list.isEmpty
-            ? EmptyState(
-                message: 'Aucun département',
-                icon: Icons.business_outlined,
-                actionLabel: 'Ajouter',
-                onAction: () => _showForm(context, ref),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: list.length,
-                itemBuilder: (_, i) => _DeptCard(dept: list[i]),
-              ),
+        data: (list) {
+          var filtered = list;
+          if (_search.isNotEmpty) {
+            final q = _search.toLowerCase();
+            filtered = filtered
+                .where((d) =>
+                    d.nom.toLowerCase().contains(q) ||
+                    (d.description?.toLowerCase().contains(q) ?? false) ||
+                    (d.responsableNom?.toLowerCase().contains(q) ?? false))
+                .toList();
+          }
+
+          return _DepartmentsPageContent(
+            departments: filtered,
+            onAdd: () => _showForm(context, ref),
+            search: _search,
+            onSearch: (v) => setState(() => _search = v),
+          );
+        },
         loading: () => const LoadingWidget(),
         error: (e, _) => Center(child: Text('$e')),
       ),
@@ -59,215 +66,183 @@ class DepartmentsScreen extends ConsumerWidget {
   }
 }
 
-class _DeptCard extends ConsumerWidget {
-  final DepartmentModel dept;
-  const _DeptCard({required this.dept});
+/// Page content using new Pro components
+class _DepartmentsPageContent extends ConsumerWidget {
+  final List<DepartmentModel> departments;
+  final VoidCallback onAdd;
+  final String search;
+  final ValueChanged<String> onSearch;
+
+  const _DepartmentsPageContent({
+    required this.departments,
+    required this.onAdd,
+    required this.search,
+    required this.onSearch,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
+    // Build columns inside build method to have access to context and ref
+    final columns = _buildColumns(context: context, ref: ref);
+
+    if (departments.isEmpty) {
+      return Container(
+        color: AppColors.background,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              ProPageHeader(
+                icon: Icons.business_outlined,
+                title: 'Liste des départements',
+                subtitle: 'Gestion des départements de l\'entreprise',
+                count: 0,
+              ),
+              const SizedBox(height: 16),
+              ProListToolbar(
+                searchHint: 'Rechercher un département...',
+                onSearch: onSearch,
+                addLabel: 'Nouveau département',
+                onAdd: onAdd,
+              ),
+              const SizedBox(height: 16),
+              const EmptyState(
+                message: 'Aucun département',
+                icon: Icons.business_outlined,
+              ),
+            ],
           ),
-          child: const Icon(Icons.business_outlined, color: AppColors.primary),
         ),
-        title: Text(
-          dept.nom,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (dept.description != null)
-              Text(dept.description!, style: const TextStyle(fontSize: 12)),
-            Text(
-              '${dept.nombreEmployes} employé(s)${dept.responsableNom != null ? ' • Resp: ${dept.responsableNom}' : ''}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        onTap: () => _showEmployees(context, dept),
-        trailing: PopupMenuButton<String>(
-          onSelected: (v) async {
-            if (v == 'edit') {
-              showDialog(
-                context: context,
-                builder: (_) => Dialog(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 500),
-                    child: _DeptForm(dept: dept),
-                  ),
-                ),
-              );
-            } else if (v == 'delete') {
-              final ok = await showConfirm(
-                context,
-                title: 'Supprimer',
-                message: 'Supprimer le département "${dept.nom}" ?',
-              );
-              if (ok && context.mounted) {
-                await ref
-                    .read(firestoreServiceProvider)
-                    .deleteDepartment(dept.id);
-                if (context.mounted) showSnack(context, 'Département supprimé');
-              }
-            }
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit_outlined, size: 18),
-                  SizedBox(width: 8),
-                  Text('Modifier'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                  SizedBox(width: 8),
-                  Text('Supprimer', style: TextStyle(color: AppColors.error)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+      );
+    }
 
-  void _showEmployees(BuildContext context, DepartmentModel dept) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _DeptEmployeesScreen(dept: dept),
-      ),
-    );
-  }
-}
-
-class _DeptEmployeesScreen extends ConsumerWidget {
-  final DepartmentModel dept;
-  const _DeptEmployeesScreen({required this.dept});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final all = ref.watch(allEmployeesProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(dept.nom),
-        actions: [NotificationBell()],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddEmployee(context, ref, all.value ?? []),
-        icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Ajouter un employé'),
-      ),
-      body: all.when(
-        data: (list) {
-          final filtered = list.where((e) => e.departementId == dept.id).toList();
-          return filtered.isEmpty
-              ? const EmptyState(
-                  message: 'Aucun employé dans ce département',
-                  icon: Icons.people_outline,
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filtered.length,
-                  itemBuilder: (_, i) {
-                    final e = filtered[i];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: EmployeeAvatar(name: e.fullName, photoUrl: e.photoUrl),
-                        title: Text(e.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text('${e.poste} • ${e.statut}'),
-                        trailing: StatusBadge(status: e.statut),
-                      ),
-                    );
-                  },
-                );
-        },
-        loading: () => const LoadingWidget(),
-        error: (e, _) => Center(child: Text('$e')),
-      ),
-    );
-  }
-
-  void _showAddEmployee(BuildContext context, WidgetRef ref, List<EmployeeModel> existing) {
-    final others = existing.where((e) => e.departementId != dept.id).toList();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _AddEmployeeToDeptSheet(dept: dept, available: others),
-    );
-  }
-}
-
-class _AddEmployeeToDeptSheet extends ConsumerWidget {
-  final DepartmentModel dept;
-  final List<EmployeeModel> available;
-  const _AddEmployeeToDeptSheet({required this.dept, required this.available});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6,
-      builder: (_, ctrl) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+    return Container(
+      color: AppColors.background,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ajouter au département ${dept.nom}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const Divider(),
-            if (available.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: Text('Aucun employé disponible')),
-              )
-            else
-              Expanded(
-                child: ListView.builder(
-                  controller: ctrl,
-                  itemCount: available.length,
-                  itemBuilder: (_, i) {
-                    final e = available[i];
-                    return ListTile(
-                      leading: EmployeeAvatar(name: e.fullName, photoUrl: e.photoUrl),
-                      title: Text(e.fullName),
-                      subtitle: Text(e.poste),
-                      trailing: const Icon(Icons.add_circle_outline, color: AppColors.primary),
-                      onTap: () async {
-                        await ref.read(firestoreServiceProvider).updateEmployee(
-                          e.copyWith(departementId: dept.id, departementNom: dept.nom),
-                        );
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          showSnack(context, '${e.fullName} ajouté au département');
-                        }
-                      },
-                    );
-                  },
-                ),
-              ),
+            // Page Header
+            ProPageHeader(
+              icon: Icons.business_outlined,
+              title: 'Liste des départements',
+              subtitle: 'Gestion des départements de l\'entreprise',
+              count: departments.length,
+            ),
+            const SizedBox(height: 16),
+            // Toolbar
+            ProListToolbar(
+              searchHint: 'Rechercher un département...',
+              onSearch: onSearch,
+              addLabel: 'Nouveau département',
+              onAdd: onAdd,
+            ),
+            const SizedBox(height: 16),
+            // Data Table
+            ProDataTable<DepartmentModel>(
+              minWidth: 900,
+              columns: columns,
+              items: departments,
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  List<ProColumn<DepartmentModel>> _buildColumns({
+    required BuildContext context,
+    required WidgetRef ref,
+  }) {
+    return [
+      ProColumn<DepartmentModel>(
+        label: 'Département',
+        flex: 3,
+        cell: (d) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.business_outlined, size: 20, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                d.nom,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+            ),
+          ],
+        ),
+      ),
+      ProColumn<DepartmentModel>(
+        label: 'Description',
+        flex: 3,
+        cell: (d) => Text(d.description?.isNotEmpty == true ? d.description! : '—', style: const TextStyle(color: AppColors.textSecondary)),
+      ),
+      ProColumn<DepartmentModel>(
+        label: 'Responsable',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (d) => d.responsableNom != null
+            ? ProEmployeeCell(name: d.responsableNom!, subtitle: 'Responsable')
+            : const Text('—'),
+      ),
+      ProColumn<DepartmentModel>(
+        label: 'Employés',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (d) => Text('${d.nombreEmployes}'),
+      ),
+      ProColumn<DepartmentModel>(
+        label: 'Actions',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (d) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ProActionIcon(
+              icon: Icons.edit_outlined,
+              color: Colors.orange.shade800,
+              tooltip: 'Modifier',
+              onTap: () => _showForm(context, ref, d),
+            ),
+            const SizedBox(width: 8),
+            ProActionIcon(
+              icon: Icons.delete_outline,
+              color: Colors.red.shade700,
+              tooltip: 'Supprimer',
+              onTap: () async {
+                final ok = await showConfirm(
+                  context,
+                  title: 'Supprimer',
+                  message: 'Supprimer le département "${d.nom}" ?',
+                );
+                if (ok && context.mounted) {
+                  await ref.read(departmentApiServiceProvider).deleteDepartment(d.id);
+                  if (context.mounted) showSnack(context, 'Département supprimé');
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  void _showForm(BuildContext context, WidgetRef ref, [DepartmentModel? dept]) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: _DeptForm(dept: dept),
         ),
       ),
     );
@@ -312,10 +287,10 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
-      final user = ref.read(currentUserProvider)!;
+      final departmentService = ref.read(departmentApiServiceProvider);
       if (widget.dept != null) {
-        await service.updateDepartment(
+        await departmentService.updateDepartment(
+          widget.dept!.id,
           widget.dept!.copyWith(
             nom: _nomCtrl.text.trim(),
             description: _descCtrl.text.trim(),
@@ -323,16 +298,8 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
             responsableNom: _responsableNom,
           ),
         );
-        await service.addAuditLog(
-          userId: user.id,
-          userNom: user.fullName,
-          action: 'modification',
-          collection: AppConstants.colDepartments,
-          documentId: widget.dept!.id,
-          description: 'Modification département ${_nomCtrl.text}',
-        );
       } else {
-        final id = await service.addDepartment(
+        await departmentService.createDepartment(
           DepartmentModel(
             id: '',
             nom: _nomCtrl.text.trim(),
@@ -342,16 +309,9 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
             createdAt: DateTime.now(),
           ),
         );
-        await service.addAuditLog(
-          userId: user.id,
-          userNom: user.fullName,
-          action: 'ajout',
-          collection: AppConstants.colDepartments,
-          documentId: id,
-          description: 'Ajout département ${_nomCtrl.text}',
-        );
       }
       if (mounted) {
+        ref.invalidate(departmentsProvider);
         Navigator.pop(context);
         showSnack(context, 'Département enregistré');
       }

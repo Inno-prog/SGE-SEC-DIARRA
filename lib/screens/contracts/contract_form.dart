@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import '../../core/theme/app_theme.dart';
@@ -21,12 +22,10 @@ class ContractForm extends ConsumerStatefulWidget {
 class _ContractFormState extends ConsumerState<ContractForm> {
   final _formKey = GlobalKey<FormState>();
   final _notesCtrl = TextEditingController();
-  final _customNomCtrl = TextEditingController();
   String? _employeeId;
   String? _employeeNom;
-  bool _isNewEntity = false;
   String _type = AppConstants.contractCDI;
-  String _statut = AppConstants.contractDraft;
+  String _statut = AppConstants.contractValidated;
   DateTime _dateDebut = DateTime.now();
   DateTime? _dateFin;
   bool _renouvellement = false;
@@ -53,31 +52,55 @@ class _ContractFormState extends ConsumerState<ContractForm> {
   @override
   void dispose() {
     _notesCtrl.dispose();
-    _customNomCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _pickContractDocument() async {
+    if (_employeeId == null) {
+      if (mounted) showSnack(context, 'Veuillez sélectionner un employé d\'abord', isError: true);
+      return;
+    }
     final file = await openFile(
       acceptedTypeGroups: const [XTypeGroup(extensions: ['pdf'])],
     );
     if (file == null) return;
     setState(() => _uploadingDoc = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
+      final documentService = ref.read(documentApiServiceProvider);
       dynamic docFile;
       if (kIsWeb) {
         docFile = await file.readAsBytes();
       } else {
         docFile = File(file.path);
       }
-      final path =
-          '${AppConstants.storageContracts}/${widget.contract?.id ?? "new_${DateTime.now().millisecondsSinceEpoch}"}/${file.name}';
-      final fileId = await service.uploadDocument(docFile, path);
-      setState(() {
-        _contractDocuments.add(fileId);
-      });
-      if (mounted) showSnack(context, 'Document uploadé');
+
+      // Read file bytes
+      final bytes = kIsWeb
+          ? docFile as Uint8List
+          : await (docFile as File).readAsBytes();
+
+      // For contract documents, we use the employee ID (not contract ID)
+      // If it's a new entity without employee, we can't upload documents yet
+      final String employeeIdForUpload = _employeeId ?? '';
+      if (employeeIdForUpload.isEmpty) {
+        if (mounted) showSnack(context, 'Impossible d\'uploader: aucun employé associé', isError: true);
+        return;
+      }
+
+      final response = await documentService.uploadDocument(
+        employeeIdForUpload,
+        'contrat',  // Prisma enum: contrat
+        file.name,
+        bytes,
+      );
+      final fileId = response['document']['id'] as String?;
+
+      if (fileId != null) {
+        setState(() {
+          _contractDocuments.add(fileId);
+        });
+        if (mounted) showSnack(context, 'Document uploadé');
+      }
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -104,16 +127,28 @@ class _ContractFormState extends ConsumerState<ContractForm> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (!_isNewEntity && _employeeId == null) return;
-    if (_isNewEntity && _customNomCtrl.text.trim().isEmpty) return;
+    if (_employeeId == null) {
+      showSnack(context, 'Veuillez sélectionner un employé', isError: true);
+      return;
+    }
 
-    final String employeeId = _isNewEntity ? '' : _employeeId!;
-    final String employeeNom = _isNewEntity ? _customNomCtrl.text.trim() : _employeeNom!;
+    final String employeeId = _employeeId!;
+    final String employeeNom = _employeeNom!;
 
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
+      final contractService = ref.read(contractApiServiceProvider);
       final user = ref.read(currentUserProvider)!;
+      // Calculer la durée en mois automatiquement
+      int? dureeCalculee;
+      if (_type == AppConstants.contractCDI) {
+        dureeCalculee = null; // CDI = durée indéterminée (pas de durée fixe)
+      } else if (_dateFin != null) {
+        final diff = _dateFin!.difference(_dateDebut).inDays;
+        dureeCalculee = (diff / 30).ceil(); // Approximation en mois
+        if (dureeCalculee < 1) dureeCalculee = 1;
+      }
+
       final c = ContractModel(
         id: widget.contract?.id ?? '',
         employeeId: employeeId,
@@ -121,6 +156,7 @@ class _ContractFormState extends ConsumerState<ContractForm> {
         type: _type,
         dateDebut: _dateDebut,
         dateFin: _type == AppConstants.contractCDI ? null : _dateFin,
+        dureeEnMois: dureeCalculee,
         renouvellement: _renouvellement,
         notes: _notesCtrl.text.trim(),
         piecesJointes: _contractDocuments,
@@ -129,14 +165,32 @@ class _ContractFormState extends ConsumerState<ContractForm> {
         createdBy: user.id,
       );
       if (widget.contract != null) {
-        await service.updateContract(c);
+        await contractService.updateContract(widget.contract!.id, c);
       } else {
-        await service.addContract(c);
+        await contractService.createContract(c);
       }
       if (mounted) {
+        // contractsProvider is a family provider with employeeId parameter
+        ref.invalidate(contractsProvider(_employeeId));
+        ref.invalidate(contractsProvider(null)); // for all contracts list
+        ref.invalidate(expiringContractsProvider);
         Navigator.pop(context);
         showSnack(context, 'Contrat enregistré');
       }
+    } on DioException catch (e) {
+      // Gestion spécifique des erreurs Dio
+      String errorMsg = 'Erreur lors de la création du contrat';
+      if (e.response != null) {
+        final data = e.response!.data;
+        if (data is Map && data['error'] != null) {
+          errorMsg = data['error'].toString();
+        } else if (data is Map && data['details'] != null) {
+          // Erreurs de validation Zod
+          final details = data['details'] as List;
+          errorMsg = details.map((d) => '${d['field']}: ${d['message']}').join('\n');
+        }
+      }
+      if (mounted) showSnack(context, errorMsg, isError: true);
     } catch (e) {
       if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
@@ -149,7 +203,7 @@ class _ContractFormState extends ConsumerState<ContractForm> {
     final employees = ref.watch(allEmployeesProvider);
     final bool isLocked = widget.contract != null &&
         (widget.contract!.statut == AppConstants.contractValidated ||
-         widget.contract!.statut == AppConstants.contractActiveLegacy);
+         widget.contract!.statut == AppConstants.contractActive);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -203,9 +257,8 @@ class _ContractFormState extends ConsumerState<ContractForm> {
                 employees.when(
                   data: (list) => AppDropdown<String>(
                     label: 'Employé / Société',
-                    value: _isNewEntity ? 'new' : _employeeId,
-                    items: [
-                      ...list
+                    value: _employeeId,
+                    items: list
                           .map(
                             (e) => DropdownMenuItem(
                               value: e.id,
@@ -213,29 +266,16 @@ class _ContractFormState extends ConsumerState<ContractForm> {
                             ),
                           )
                           .toList(),
-                      const DropdownMenuItem(
-                        value: 'new',
-                        child: Text('+ Nouvel employé / société'),
-                      ),
-                    ],
                     onChanged: (String? v) {
-                      if (v == 'new') {
-                        setState(() {
-                          _isNewEntity = true;
-                          _employeeId = null;
-                          _employeeNom = null;
-                        });
-                      } else if (v != null) {
+                      if (v != null) {
                         final emp = list.firstWhere((e) => e.id == v);
                         setState(() {
                           _employeeId = v;
                           _employeeNom = emp.fullName;
-                          _isNewEntity = false;
                         });
                       }
                     },
                     validator: (String? v) {
-                      if (_isNewEntity) return null;
                       if (v == null) return 'Requis';
                       return null;
                     },
@@ -248,13 +288,6 @@ class _ContractFormState extends ConsumerState<ContractForm> {
                     ),
                   ),
                 ),
-                if (_isNewEntity)
-                  AppTextField(
-                    label: 'Nom employé / société *',
-                    controller: _customNomCtrl,
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Requis' : null,
-                  ),
                 const SizedBox(height: 12),
                 AppDropdown<String>(
                   label: 'Type de contrat',
@@ -264,8 +297,7 @@ class _ContractFormState extends ConsumerState<ContractForm> {
                             AppConstants.contractCDI,
                             AppConstants.contractCDD,
                             AppConstants.contractStage,
-                            AppConstants.contractConsultant,
-                            AppConstants.contractPrestataire,
+                            AppConstants.contractFreelance,
                           ]
                           .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                           .toList(),
@@ -284,8 +316,10 @@ class _ContractFormState extends ConsumerState<ContractForm> {
                   decoration: const InputDecoration(labelText: 'Statut'),
                   value: _statut,
                   items: const [
-                    DropdownMenuItem(value: 'brouillon', child: Text('Brouillon')),
-                    DropdownMenuItem(value: 'valide', child: Text('Validé')),
+                    DropdownMenuItem(value: 'en_attente', child: Text('En attente')),
+                    DropdownMenuItem(value: 'actif', child: Text('Actif')),
+                    DropdownMenuItem(value: 'expire', child: Text('Expiré')),
+                    DropdownMenuItem(value: 'resilie', child: Text('Résilié')),
                   ],
                   onChanged: (String? v) {
                     if (!isLocked && v != null) setState(() => _statut = v);
