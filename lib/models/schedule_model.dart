@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class ScheduleModel {
   final String id;
   final String nom;
@@ -8,6 +6,7 @@ class ScheduleModel {
   final String jours;
   final String type;
   final DateTime createdAt;
+  final String? createdBy;
 
   ScheduleModel({
     required this.id,
@@ -17,27 +16,32 @@ class ScheduleModel {
     required this.jours,
     required this.type,
     required this.createdAt,
+    this.createdBy,
   });
 
-  factory ScheduleModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory ScheduleModel.fromJson(Map<String, dynamic> json) {
     return ScheduleModel(
-      id: doc.id,
-      nom: d['nom'] ?? '',
-      debut: d['debut'] ?? '',
-      fin: d['fin'] ?? '',
-      jours: d['jours'] ?? '',
-      type: d['type'] ?? 'normal',
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      nom: json['nom'] ?? '',
+      debut: json['debut'] ?? '',
+      fin: json['fin'] ?? '',
+      jours: json['jours'] ?? '',
+      type: json['type'] ?? 'normal',
+      createdAt: json['createdAt'] != null || json['created_at'] != null
+          ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
+      createdBy: json['createdBy'] ?? json['created_by'],
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'nom': nom,
         'debut': debut,
         'fin': fin,
         'jours': jours,
         'type': type,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toIso8601String(),
+        'createdBy': createdBy,
       };
 }

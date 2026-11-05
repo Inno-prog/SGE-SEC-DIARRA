@@ -1,0 +1,574 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  admin
+  manager
+  employee
+  hr
+}
+
+enum EmployeeStatus {
+  actif
+  inactif
+  conge
+  suspendu
+}
+
+enum ContractType {
+  CDI
+  CDD
+  stage
+  freelance
+}
+
+enum ContractStatus {
+  actif
+  expire
+  resilie
+  en_attente
+}
+
+enum LeaveType {
+  annuel
+  maladie
+  maternite
+  paternite
+  exceptionnel
+  sans_solde
+}
+
+enum LeaveStatus {
+  en_attente
+  approuve
+  rejete
+  annule
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  retard
+  conge
+  mission
+}
+
+enum PayrollStatus {
+  brouillon
+  valide
+  paye
+}
+
+enum BonusStatus {
+  active
+  paye
+  annule
+}
+
+enum SanctionStatus {
+  actif
+  leve
+  expire
+}
+
+enum RecruitmentStatus {
+  ouvert
+  ferme
+  pourvu
+}
+
+enum NotificationType {
+  info
+  warning
+  success
+  error
+  contract_expiry
+  leave_request
+  payroll
+}
+
+enum MessageType {
+  text
+  file
+  image
+}
+
+enum AgendaType {
+  reunion
+  rdv
+  conge
+  evenement
+}
+
+enum DocumentType {
+  contrat
+  diplome
+  cv
+  cni
+  certificat_medical
+  autre
+}
+
+enum ScheduleType {
+  normal
+  nuit
+  week_end
+  flexible
+}
+
+// Models
+model User {
+  id                String       @id @default(uuid())
+  email             String       @unique
+  passwordHash      String       @map("password_hash")
+  nom               String
+  prenom             String
+  role              UserRole     @default(employee)
+  employeeId        String?      @unique @map("employee_id")
+  photoUrl          String?      @map("photo_url")
+  isActive          Boolean      @default(true) @map("is_active")
+  twoFactorEnabled  Boolean      @default(false) @map("two_factor_enabled")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  lastLogin         DateTime?    @map("last_login")
+  permissions       String[]     @default([])
+  darkMode          Boolean      @default(false) @map("dark_mode")
+  emailNotifications Boolean     @default(true) @map("email_notifications")
+  mustChangePassword Boolean     @default(false) @map("must_change_password")
+
+  // Relations - only define fields/references on ONE side per relation
+  employeeProfile   Employee?    @relation("UserEmployee", fields: [employeeId], references: [id])
+  createdEmployees  Employee[]   @relation("EmployeeCreator")
+  updatedEmployees  Employee[]   @relation("EmployeeUpdater")
+  contracts         Contract[]   @relation("ContractCreator")
+  attendances       Attendance[] @relation("AttendanceCreator")
+  leaves            Leave[]      @relation("LeaveCreator")
+  leaveValidations  Leave[]      @relation("LeaveValidator")
+  payrolls          Payroll[]    @relation("PayrollCreator")
+  bonuses           Bonus[]      @relation("BonusCreator")
+  sanctions         Sanction[]   @relation("SanctionCreator")
+  trainings         Training[]   @relation("TrainingCreator")
+  evaluations       Evaluation[] @relation("EvaluationCreator")
+  documents         Document[]   @relation("DocumentCreator")
+  recruitments      Recruitment[] @relation("RecruitmentCreator")
+  notifications     Notification[] @relation("NotificationUser")
+  sentMessages      Message[]    @relation("MessageSender")
+  conversations     ConversationParticipant[]
+  agendaEvents      Agenda[]     @relation("AgendaCreator")
+  schedules         Schedule[]   @relation("ScheduleCreator")
+  auditLogs         AuditLog[]
+  managedDepartments Department[] @relation("DepartmentResponsable")
+
+  @@map("users")
+}
+
+model Department {
+  id              String       @id @default(uuid())
+  nom             String
+  description     String?
+  responsableId   String?      @map("responsable_id")
+  nombreEmployes  Int          @default(0) @map("nombre_employes")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  responsable     User?        @relation("DepartmentResponsable", fields: [responsableId], references: [id])
+  employees       Employee[]
+  positions       Position[]
+
+  @@map("departments")
+}
+
+model Position {
+  id              String       @id @default(uuid())
+  titre           String       @unique
+  description     String?
+  departementId   String?      @map("departement_id")
+  salaireMini     Float?       @map("salaire_mini")
+  salaireMaxi     Float?       @map("salaire_maxi")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  departement     Department?  @relation(fields: [departementId], references: [id])
+  employees       Employee[]
+
+  @@map("positions")
+}
+
+model Employee {
+  id                      String          @id @default(uuid())
+  matricule               String          @unique
+  nom                     String
+  prenom                  String
+  sexe                    String
+  dateNaissance           DateTime        @map("date_naissance")
+  photoUrl                String?         @map("photo_url")
+  adresse                 String
+  telephone               String
+  email                   String          @unique
+  situationMatrimoniale   String          @map("situation_matrimoniale")
+  nationalite             String?         @default("")
+  contactUrgenceNom       String?         @map("contact_urgence_nom")
+  contactUrgenceTel       String?         @map("contact_urgence_tel")
+  contactUrgenceRelation  String?         @map("contact_urgence_relation")
+
+  // Professional info
+  poste                   String
+  service                 String
+  departementId           String          @map("departement_id")
+  departementNom          String          @map("departement_nom")
+  grade                   String
+  dateEmbauche            DateTime        @map("date_embauche")
+  typeContrat             ContractType    @map("type_contrat")
+  salaire                 Float
+  statut                  EmployeeStatus  @default(actif)
+
+  // Leave balances
+  soldeCongesAnnuels      Int             @default(30) @map("solde_conges_annuels")
+  soldeCongesMaladie      Int             @default(15) @map("solde_conges_maladie")
+
+  // Document references
+  contratSigneFileId      String?         @map("contrat_signe_file_id")
+  demandeFileId           String?         @map("demande_file_id")
+  cvFileId                String?         @map("cv_file_id")
+  diplomeFileId           String?         @map("diplome_file_id")
+  autresFileId            String?         @map("autres_file_id")
+
+  createdAt               DateTime        @default(now()) @map("created_at")
+  createdBy               String          @map("created_by")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+  updatedBy               String?         @map("updated_by")
+
+  // Relations - only define fields/references on Employee side for creator/updater
+  userAccount             User?           @relation("UserEmployee")
+  departement             Department      @relation(fields: [departementId], references: [id])
+  position                Position?       @relation(fields: [poste], references: [titre])
+  contracts               Contract[]
+  attendances             Attendance[]
+  leaves                  Leave[]
+  payrolls                Payroll[]
+  bonuses                 Bonus[]
+  sanctions               Sanction[]
+  trainings               Training[]
+  evaluations             Evaluation[]
+  documents               Document[]
+  createdByUser           User            @relation("EmployeeCreator", fields: [createdBy], references: [id])
+  updatedByUser           User?           @relation("EmployeeUpdater", fields: [updatedBy], references: [id])
+
+  @@map("employees")
+}
+
+model Contract {
+  id              String          @id @default(uuid())
+  employeeId      String          @map("employee_id")
+  employeeNom     String          @map("employee_nom")
+  type            ContractType
+  dateDebut       DateTime        @map("date_debut")
+  dateFin         DateTime?       @map("date_fin")
+  dureeEnMois     Int?            @map("duree_en_mois")
+  renouvellement  Boolean         @default(false)
+  notes           String?
+  piecesJointes   String[]        @default([])
+  statut          ContractStatus  @default(actif)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  createdBy       String          @map("created_by")
+
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  creator         User            @relation("ContractCreator", fields: [createdBy], references: [id])
+
+  @@map("contracts")
+}
+
+model Attendance {
+  id              String              @id @default(uuid())
+  employeeId      String              @map("employee_id")
+  employeeNom     String              @map("employee_nom")
+  employeePhoto   String?             @map("employee_photo")
+  date            DateTime
+  heureArrivee    DateTime?           @map("heure_arrivee")
+  heureDepart     DateTime?           @map("heure_depart")
+  statut          AttendanceStatus    @default(present)
+  retardMinutes   Int                 @default(0) @map("retard_minutes")
+  justification   String?
+  methode         String              @default("manuel")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  createdBy       String              @map("created_by")
+
+  employee        Employee            @relation(fields: [employeeId], references: [id])
+  creator         User                @relation("AttendanceCreator", fields: [createdBy], references: [id])
+
+  @@index([employeeId, date])
+  @@map("attendances")
+}
+
+model Leave {
+  id              String          @id @default(uuid())
+  employeeId      String          @map("employee_id")
+  employeeNom     String          @map("employee_nom")
+  employeePhoto   String?         @map("employee_photo")
+  type            LeaveType
+  dateDebut       DateTime        @map("date_debut")
+  dateFin         DateTime        @map("date_fin")
+  nombreJours     Int             @map("nombre_jours")
+  motif           String
+  statut          LeaveStatus     @default(en_attente)
+  commentaireRH   String?         @map("commentaire_rh")
+  validePar       String?         @map("valide_par")
+  dateValidation  DateTime?       @map("date_validation")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  createdBy       String          @map("created_by")
+
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  creator         User            @relation("LeaveCreator", fields: [createdBy], references: [id])
+  validator       User?           @relation("LeaveValidator", fields: [validePar], references: [id])
+
+  @@map("leaves")
+}
+
+model Payroll {
+  id                  String          @id @default(uuid())
+  employeeId          String          @map("employee_id")
+  employeeNom         String          @map("employee_nom")
+  mois                Int
+  annee               Int
+  salaireBase         Float           @map("salaire_base")
+  primes              Float           @default(0)
+  bonus               Float           @default(0)
+  heuresSupp          Float           @default(0) @map("heures_supp")
+  tauxHeureSupp       Float           @default(0) @map("taux_heure_supp")
+  retenues            Float           @default(0)
+  cotisationsSociales Float           @default(0) @map("cotisations_sociales")
+  impots              Float           @default(0)
+  netAPayer           Float           @map("net_a_payer")
+  statut              PayrollStatus   @default(brouillon)
+  datePaiement        DateTime?       @map("date_paiement")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  createdBy           String          @map("created_by")
+
+  employee            Employee        @relation(fields: [employeeId], references: [id])
+  creator             User            @relation("PayrollCreator", fields: [createdBy], references: [id])
+
+  @@unique([employeeId, mois, annee])
+  @@map("payrolls")
+}
+
+model Bonus {
+  id              String          @id @default(uuid())
+  employeeId      String          @map("employee_id")
+  employeeNom     String          @map("employee_nom")
+  type            String
+  montant         Float
+  motif           String
+  dateAttribution DateTime        @map("date_attribution")
+  statut          BonusStatus     @default(active)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  createdBy       String          @map("created_by")
+
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  creator         User            @relation("BonusCreator", fields: [createdBy], references: [id])
+
+  @@map("bonuses")
+}
+
+model Sanction {
+  id              String            @id @default(uuid())
+  employeeId      String            @map("employee_id")
+  employeeNom     String            @map("employee_nom")
+  type            String
+  motif           String
+  date            DateTime
+  dureeSuspension Int?              @map("duree_suspension")
+  decisionPar     String?           @map("decision_par")
+  statut          SanctionStatus    @default(actif)
+  createdAt       DateTime          @default(now()) @map("created_at")
+  createdBy       String            @map("created_by")
+
+  employee        Employee          @relation(fields: [employeeId], references: [id])
+  creator         User              @relation("SanctionCreator", fields: [createdBy], references: [id])
+
+  @@map("sanctions")
+}
+
+model Training {
+  id              String      @id @default(uuid())
+  employeeId      String      @map("employee_id")
+  employeeNom     String      @map("employee_nom")
+  intitule        String
+  date            DateTime
+  organisme       String
+  dureeJours      Int         @map("duree_jours")
+  attestationUrl  String?     @map("attestation_url")
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  createdBy       String      @map("created_by")
+
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  creator         User        @relation("TrainingCreator", fields: [createdBy], references: [id])
+
+  @@map("trainings")
+}
+
+model Evaluation {
+  id              String      @id @default(uuid())
+  employeeId      String      @map("employee_id")
+  employeeNom     String      @map("employee_nom")
+  annee           Int
+  note            Float
+  commentaire     String
+  objectifs       Json        @default("[]")
+  evaluateurId    String      @map("evaluateur_id")
+  evaluateurNom   String      @map("evaluateur_nom")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  employee        Employee    @relation(fields: [employeeId], references: [id])
+  creator         User        @relation("EvaluationCreator", fields: [evaluateurId], references: [id])
+
+  @@unique([employeeId, annee])
+  @@map("evaluations")
+}
+
+model Document {
+  id              String          @id @default(uuid())
+  employeeId      String          @map("employee_id")
+  employeeNom     String          @map("employee_nom")
+  type            DocumentType
+  nom             String
+  url             String
+  tailleFichier   Int             @map("taille_fichier")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  createdBy       String          @map("created_by")
+
+  employee        Employee        @relation(fields: [employeeId], references: [id])
+  creator         User            @relation("DocumentCreator", fields: [createdBy], references: [id])
+
+  @@map("documents")
+}
+
+model Recruitment {
+  id                  String              @id @default(uuid())
+  poste               String
+  departementId       String              @map("departement_id")
+  departementNom      String              @map("departement_nom")
+  description         String
+  typeContrat         ContractType        @map("type_contrat")
+  datePublication     DateTime            @map("date_publication")
+  dateLimite          DateTime?           @map("date_limite")
+  statut              RecruitmentStatus   @default(ouvert)
+  nombreCandidatures  Int                 @default(0) @map("nombre_candidatures")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  createdBy           String              @map("created_by")
+
+  creator             User                @relation("RecruitmentCreator", fields: [createdBy], references: [id])
+
+  @@map("recruitments")
+}
+
+model Notification {
+  id          String            @id @default(uuid())
+  userId      String            @map("user_id")
+  titre       String
+  message     String
+  type        NotificationType  @default(info)
+  isRead      Boolean           @default(false) @map("is_read")
+  actionRoute String?           @map("action_route")
+  contractId  String?           @map("contract_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  user        User              @relation("NotificationUser", fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model Conversation {
+  id              String      @id @default(uuid())
+  nom             String
+  lastMessage     String      @default("") @map("last_message")
+  lastMessageAt   DateTime    @default(now()) @map("last_message_at")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  participants    ConversationParticipant[]
+  messages        Message[]
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id              String         @id @default(uuid())
+  conversationId  String         @map("conversation_id")
+  userId          String         @map("user_id")
+  joinedAt        DateTime       @default(now()) @map("joined_at")
+
+  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id              String      @id @default(uuid())
+  conversationId  String      @map("conversation_id")
+  senderId        String      @map("sender_id")
+  senderNom       String      @map("sender_nom")
+  senderPhoto     String?     @map("sender_photo")
+  contenu         String
+  piecesJointes   String[]    @default([])
+  isRead          Boolean     @default(false) @map("is_read")
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User        @relation("MessageSender", fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Agenda {
+  id              String       @id @default(uuid())
+  titre           String
+  description     String?
+  type            AgendaType
+  dateDebut       DateTime     @map("date_debut")
+  dateFin         DateTime     @map("date_fin")
+  participants    String[]     @default([])
+  createdAt       DateTime     @default(now()) @map("created_at")
+  createdBy       String       @map("created_by")
+
+  creator         User         @relation("AgendaCreator", fields: [createdBy], references: [id])
+
+  @@map("agenda")
+}
+
+model Schedule {
+  id          String         @id @default(uuid())
+  nom         String
+  debut       String
+  fin         String
+  jours       String
+  type        ScheduleType   @default(normal)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  createdBy   String         @map("created_by")
+
+  creator     User           @relation("ScheduleCreator", fields: [createdBy], references: [id])
+
+  @@map("schedules")
+}
+
+model AuditLog {
+  id              String      @id @default(uuid())
+  userId          String      @map("user_id")
+  userNom         String      @map("user_nom")
+  action          String      // ajout, modification, suppression
+  collection      String
+  documentId      String      @map("document_id")
+  description     String
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  user            User        @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([collection, documentId])
+  @@map("audit_logs")
+}

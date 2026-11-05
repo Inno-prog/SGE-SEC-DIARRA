@@ -1,61 +1,77 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../firebase_options.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
-import '../core/constants/app_constants.dart';
-
+import '../services/api/auth_api_service.dart';
+import '../services/api/user_api_service.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final AuthApiService _authApi = AuthApiService();
+  final UserApiService _userApi = UserApiService();
 
-  User? get currentUser => _auth.currentUser;
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  Future<UserModel?> signIn(String email, String password) async {
-    final cred = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    if (cred.user == null) return null;
-    final userRef = _db.collection(AppConstants.colUsers).doc(cred.user!.uid);
-    final userDoc = await userRef.get();
-    final updates = <String, dynamic>{'lastLogin': Timestamp.now()};
-    if (!userDoc.exists) {
-      final defaultPrenom = email.split('@').first.split('.').first;
-      updates.addAll({
-        'email': email,
-        'nom': '',
-        'prenom': defaultPrenom,
-        'role': AppConstants.roleEmployee,
-        'employeeId': cred.user!.uid,
-        'photoUrl': null,
-        'isActive': true,
-        'twoFactorEnabled': false,
-        'createdAt': Timestamp.now(),
-        'permissions': [],
-        'darkMode': false,
-        'emailNotifications': true,
-      });
-    } else {
-      final data = userDoc.data() ?? {};
-      if ((data['employeeId'] ?? null) == null) {
-        updates['employeeId'] = cred.user!.uid;
+  // Stream of auth state changes
+  Future<UserModel?> get currentUser async {
+    if (!_authApi.isAuthenticated) return null;
+    try {
+      final response = await _authApi.getProfile();
+      // Backend might return user directly or with success field
+      if (response['user'] != null) {
+        return UserModel.fromJson(response['user']);
       }
+    } catch (e) {
+      // Token might be invalid
     }
-    await userRef.set(updates, SetOptions(merge: true));
-    return getUserById(cred.user!.uid);
+    return null;
   }
 
-  Future<void> signOut() => _auth.signOut();
+  Stream<UserModel?> get authStateChanges async* {
+    // Check initial state
+    final userData = await currentUser;
+    if (userData != null) {
+      yield userData;
+    } else {
+      yield null;
+    }
+  }
+
+  Future<UserModel?> signIn(String email, String password) async {
+    final data = await _authApi.login(email, password);
+    // Original code expected: { user: {...}, accessToken: "...", refreshToken: "..." }
+    // Some backends don't include 'success' field
+    if (data['user'] != null && data['accessToken'] != null) {
+      final user = UserModel.fromJson(data['user']);
+      _authApi.setTokens(data['accessToken'], data['refreshToken']);
+
+      // Fetch complete profile to ensure employeeId is populated
+      // (login response may not include employeeId for all users)
+      try {
+        final profileResponse = await _authApi.getProfile();
+        if (profileResponse['user'] != null) {
+          return UserModel.fromJson(profileResponse['user']);
+        }
+      } catch (e) {
+        // If profile fetch fails, return user from login response
+        debugPrint('Failed to fetch profile after login: $e');
+      }
+
+      return user;
+    }
+    throw Exception(data['message'] ?? data['error'] ?? 'Login failed');
+  }
+
+  Future<void> signOut() async {
+    await _authApi.logout();
+    _authApi.clearTokens();
+  }
 
   Future<UserModel?> getUserById(String uid) async {
-    final doc = await _db.collection(AppConstants.colUsers).doc(uid).get();
-    if (!doc.exists) return null;
-    return UserModel.fromFirestore(doc);
+    try {
+      final response = await _userApi.getUserById(uid);
+      if (response['success'] == true && response['user'] != null) {
+        return UserModel.fromJson(response['user']);
+      }
+    } catch (e) {
+      return null;
+    }
+    return null;
   }
 
   Future<UserModel> createUser({
@@ -66,91 +82,51 @@ class AuthService {
     required String role,
     String? employeeId,
   }) async {
-    final apiKey = DefaultFirebaseOptions.currentPlatform.apiKey;
-    final signUpUri = Uri.parse(
-      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apiKey',
-    );
-
-    final res = await http.post(
-      signUpUri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'password': password,
-        'returnSecureToken': true,
-      }),
-    );
-
-    final data = jsonDecode(res.body);
-    if (res.statusCode != 200) {
-      final code = data['error']?['message'] as String? ?? 'unknown';
-      final message = switch (code) {
-        'EMAIL_EXISTS' => 'Cette adresse email est déjà utilisée par un autre compte.',
-        'OPERATION_NOT_ALLOWED' => 'La création de compte par mot de passe n\'est pas activée.',
-        'TOO_MANY_ATTEMPTS_TRY_LATER' => 'Trop de requêtes. Veuillez patienter avant de réessayer.',
-        'WEAK_PASSWORD : Password should be at least 6 characters' =>
-          'Le mot de passe doit comporter au moins 6 caractères.',
-        _ => data['error']?['message'] ?? 'Erreur lors de la création de l\'utilisateur ($code)',
-      };
-      throw FirebaseAuthException(code: code, message: message);
-    }
-
-    final uid = data['localId'] as String;
-
     final user = UserModel(
-      id: uid,
+      id: '', // Will be set by server
       email: email,
       nom: nom,
       prenom: prenom,
       role: role,
-      employeeId: employeeId ?? uid,
+      employeeId: employeeId,
       createdAt: DateTime.now(),
-      darkMode: false,
-      emailNotifications: true,
-      mustChangePassword: true,
     );
-
-    await _db.collection(AppConstants.colUsers).doc(uid).set(user.toFirestore());
-    return user;
+    final response = await _userApi.createUser(user, password: password);
+    if (response['success'] == true && response['user'] != null) {
+      return UserModel.fromJson(response['user']);
+    }
+    throw Exception(response['message'] ?? 'Failed to create user');
   }
 
-  Future<void> updatePassword(String newPassword) async {
-    await _auth.currentUser?.updatePassword(newPassword);
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    await _authApi.changePassword(currentPassword, newPassword);
   }
 
   Future<void> sendPasswordReset(String email) async {
-    try {
-      await _auth.sendPasswordResetEmail(email: email);
-    } catch (_) {
-      final currentApiKey = DefaultFirebaseOptions.currentPlatform.apiKey;
-      final uri = Uri.parse(
-          'https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=$currentApiKey');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'requestType': 'PASSWORD_RESET', 'email': email}),
-      );
-      if (response.statusCode != 200) {
-        final error = jsonDecode(response.body);
-        throw FirebaseAuthException(
-          code: error['error']['message'] ?? 'unknown',
-          message: error['error']['message'],
-        );
-      }
-    }
+    await _authApi.requestPasswordReset(email);
   }
 
   Future<void> updateUser(UserModel user) async {
-    await _db.collection(AppConstants.colUsers).doc(user.id).update(user.toFirestore());
+    await _userApi.updateUser(user.id, user);
   }
 
   Future<void> deleteUser(String uid) async {
-    await _db.collection(AppConstants.colUsers).doc(uid).delete();
+    await _userApi.deleteUser(uid);
   }
 
-  Stream<List<UserModel>> watchAllUsers() {
-    return _db.collection(AppConstants.colUsers).snapshots().map(
-          (s) => s.docs.map(UserModel.fromFirestore).toList(),
-        );
+  Future<List<UserModel>> getAllUsers() async {
+    final response = await _userApi.getUsers();
+    final List<dynamic> users = response['data'] ?? [];
+    return users.map((u) => UserModel.fromJson(u)).toList();
+  }
+
+  // Stream version for providers
+  Stream<List<UserModel>> watchAllUsers() async* {
+    try {
+      final users = await getAllUsers();
+      yield users;
+    } catch (e) {
+      yield [];
+    }
   }
 }
