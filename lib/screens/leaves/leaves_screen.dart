@@ -258,9 +258,11 @@ class _LeaveTile extends ConsumerWidget {
       );
       if (commentaire == null) return;
     }
+    // Map frontend status to backend API value
+    final backendStatus = _mapLeaveStatusToBackend(statut);
     await ref
         .read(leaveApiServiceProvider)
-        .updateLeaveStatus(leave.id, statut, user.fullName, commentaire);
+        .updateLeaveStatus(leave.id, backendStatus, user.fullName, commentaire);
     if (context.mounted) {
       // Invalider les providers pour rafraîchir les onglets
       final currentUser = ref.read(currentUserProvider)!;
@@ -321,6 +323,41 @@ class _CommentDialogState extends State<_CommentDialog> {
   }
 }
 
+// Mapping from frontend display values to backend API values
+String _mapLeaveTypeToBackend(String frontendType) {
+  switch (frontendType) {
+    case 'Congé annuel':
+      return 'annuel';
+    case 'Congé maladie':
+      return 'maladie';
+    case 'Congé maternité':
+      return 'maternite';
+    case 'Congé exceptionnel':
+      return 'exceptionnel';
+    case 'Congé paternité':
+      return 'paternite';
+    case 'Congé sans solde':
+      return 'sans_solde';
+    default:
+      return frontendType.toLowerCase();
+  }
+}
+
+String _mapLeaveStatusToBackend(String frontendStatus) {
+  switch (frontendStatus) {
+    case 'approuvé':
+      return 'approuve';
+    case 'refusé':
+      return 'rejete';
+    case 'en_attente':
+      return 'en_attente';
+    case 'annulé':
+      return 'annule';
+    default:
+      return frontendStatus;
+  }
+}
+
 class _LeaveForm extends ConsumerStatefulWidget {
   const _LeaveForm();
 
@@ -343,17 +380,20 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider)!;
-    if (user.role == AppConstants.roleEmployee) {
-      _employeeId = user.employeeId;
-      _employeeNom = user.fullName;
-      _employeePhoto = user.photoUrl;
+    // Use user.employeeId directly - it should be set from the backend
+    _employeeId = user.employeeId;
+    _employeeNom = user.fullName;
+    _employeePhoto = user.photoUrl;
+
+    // Fallback: if employeeId is not set, try to find from employees list
+    if (_employeeId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        final employeesAsync = ref.read(allEmployeesProvider);
+        final all = employeesAsync.value;
+        if (all == null) return;
         try {
-          final all = ref.read(allEmployeesProvider).value;
-          if (all == null) return;
           final emp = all.firstWhere(
             (e) =>
-                (user.employeeId != null && e.id == user.employeeId) ||
                 e.fullName == user.fullName ||
                 e.email == user.email,
           );
@@ -364,7 +404,9 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
               _employeePhoto = emp.photoUrl;
             });
           }
-        } catch (_) {}
+        } catch (_) {
+          // No match found, keep original values
+        }
       });
     }
   }
@@ -403,13 +445,15 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
     setState(() => _loading = true);
     try {
       final leaveService = ref.read(leaveApiServiceProvider);
+      // Map frontend leave type to backend API value
+      final backendType = _mapLeaveTypeToBackend(_type);
       await leaveService.createLeave(
         LeaveModel(
           id: '',
           employeeId: _employeeId!,
           employeeNom: _employeeNom!,
           employeePhoto: _employeePhoto,
-          type: _type,
+          type: backendType,
           dateDebut: _dateDebut,
           dateFin: _dateFin,
           nombreJours: _nombreJours,
@@ -504,6 +548,8 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
                           AppConstants.leaveSick,
                           AppConstants.leaveMaternity,
                           AppConstants.leaveExceptional,
+                          'Congé paternité',
+                          'Congé sans solde',
                         ]
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                         .toList(),

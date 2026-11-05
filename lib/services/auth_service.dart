@@ -1,9 +1,7 @@
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/api/auth_api_service.dart';
 import '../services/api/user_api_service.dart';
-import '../core/constants/app_constants.dart';
 
 class AuthService {
   final AuthApiService _authApi = AuthApiService();
@@ -41,6 +39,19 @@ class AuthService {
     if (data['user'] != null && data['accessToken'] != null) {
       final user = UserModel.fromJson(data['user']);
       _authApi.setTokens(data['accessToken'], data['refreshToken']);
+
+      // Fetch complete profile to ensure employeeId is populated
+      // (login response may not include employeeId for all users)
+      try {
+        final profileResponse = await _authApi.getProfile();
+        if (profileResponse['user'] != null) {
+          return UserModel.fromJson(profileResponse['user']);
+        }
+      } catch (e) {
+        // If profile fetch fails, return user from login response
+        debugPrint('Failed to fetch profile after login: $e');
+      }
+
       return user;
     }
     throw Exception(data['message'] ?? data['error'] ?? 'Login failed');
