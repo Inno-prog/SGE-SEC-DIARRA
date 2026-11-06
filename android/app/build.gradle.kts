@@ -15,6 +15,10 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
     defaultConfig {
         applicationId = "com.sge.secdiarra"
         minSdk = flutter.minSdkVersion

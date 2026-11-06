@@ -24,15 +24,42 @@ jobs:
       - name: Build Windows EXE
         run: flutter build windows --release
 
+      - name: Verify build output
+        run: |
+          echo "=== Checking build output directories ==="
+          find build/windows -name "*.exe" -type f 2>/dev/null | head -20
+          echo "=== x64 runner Release ==="
+          ls -la build/windows/x64/runner/Release/ 2>/dev/null || echo "Not found"
+          echo "=== runner Release ==="
+          ls -la build/windows/runner/Release/ 2>/dev/null || echo "Not found"
+          echo "=== installer dir ==="
+          ls -la build/windows/installer/ 2>/dev/null || echo "Not found"
+
       - name: Install Inno Setup
         run: choco install innosetup -y
 
       - name: Create Windows Installer
         run: iscc windows/installer.iss
 
+      - name: Verify installer output
+        run: |
+          echo "=== Installer output ==="
+          ls -la build/windows/installer/
+          echo "=== Checking for installer exe ==="
+          find build/windows/installer -name "*.exe" -type f 2>/dev/null
+
       - name: Upload Windows Installer
         uses: actions/upload-artifact@v4
         with:
           name: sge-secdiarra-windows-installer
           path: build/windows/installer/SGE_SecDiarra_Setup.exe
+          retention-days: 14
+
+      - name: Upload Windows EXE (raw)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sge-secdiarra-windows-exe
+          path: |
+            build/windows/x64/runner/Release/sge_secdiarra.exe
+            build/windows/runner/Release/sge_secdiarra.exe
           retention-days: 14
