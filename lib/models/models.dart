@@ -183,12 +183,12 @@ class LeaveModel {
       employeeId: json['employeeId'] ?? json['employee_id'] ?? '',
       employeeNom: json['employeeNom'] ?? json['employee_nom'] ?? '',
       employeePhoto: json['employeePhoto'] ?? json['employee_photo'],
-      type: json['type'] ?? '',
+      type: _leaveTypeFromApi(json['type']),
       dateDebut: DateTime.parse(json['dateDebut'] ?? json['date_debut'] ?? DateTime.now().toIso8601String()),
       dateFin: DateTime.parse(json['dateFin'] ?? json['date_fin'] ?? DateTime.now().toIso8601String()),
       nombreJours: json['nombreJours'] ?? json['nombre_jours'] ?? 0,
       motif: json['motif'] ?? '',
-      statut: json['statut'] ?? 'en_attente',
+      statut: _leaveStatusFromApi(json['statut']),
       commentaireRH: json['commentaireRH'] ?? json['commentaire_rh'],
       validePar: json['validePar'] ?? json['valide_par'],
       dateValidation: json['dateValidation'] != null || json['date_validation'] != null
@@ -199,7 +199,6 @@ class LeaveModel {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
         'employeeId': employeeId,
         'employeeNom': employeeNom,
         'employeePhoto': employeePhoto,
@@ -212,8 +211,39 @@ class LeaveModel {
         'commentaireRH': commentaireRH,
         'validePar': validePar,
         'dateValidation': dateValidation?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
-        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
       };
+}
+
+String _leaveStatusFromApi(dynamic value) {
+  switch ('$value') {
+    case 'approuve':
+      return 'approuvé';
+    case 'rejete':
+      return 'refusé';
+    case 'annule':
+      return 'annulé';
+    default:
+      return value == null ? 'en_attente' : '$value';
+  }
+}
+
+String _leaveTypeFromApi(dynamic value) {
+  switch ('$value') {
+    case 'annuel':
+      return 'Congé annuel';
+    case 'maladie':
+      return 'Congé maladie';
+    case 'maternite':
+      return 'Congé maternité';
+    case 'exceptionnel':
+      return 'Congé exceptionnel';
+    case 'paternite':
+      return 'Congé paternité';
+    case 'sans_solde':
+      return 'Congé sans solde';
+    default:
+      return value == null ? '' : '$value';
+  }
 }
 
 class PayrollModel {

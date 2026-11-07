@@ -102,12 +102,22 @@ export const createDepartment = async (req, res, next) => {
     }
 
     // Verify responsable exists if provided
-    if (data.responsableId) {
+    let responsableId = data.responsableId?.trim() === '' ? null : data.responsableId;
+
+    // Validate UUID format if provided
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (responsableId && !uuidRegex.test(responsableId)) {
+      console.warn('Invalid UUID format for responsableId:', responsableId);
+      responsableId = null;
+    }
+
+    if (responsableId) {
       const responsable = await prisma.user.findUnique({
-        where: { id: data.responsableId },
+        where: { id: responsableId },
       });
       if (!responsable) {
-        throw new NotFoundError('Responsable');
+        console.warn('Responsable not found, setting to null:', responsableId);
+        responsableId = null;
       }
     }
 
@@ -115,7 +125,7 @@ export const createDepartment = async (req, res, next) => {
       data: {
         nom: data.nom,
         description: data.description,
-        responsableId: data.responsableId,
+        responsableId: responsableId,
       },
       include: {
         responsable: { select: { id: true, nom: true, prenom: true, email: true } },
@@ -161,13 +171,24 @@ export const updateDepartment = async (req, res, next) => {
       }
     }
 
-    // Verify responsable exists if changing
-    if (data.responsableId && data.responsableId !== existing.responsableId) {
+    // Verify responsable exists if changing (handle empty string as null)
+    let responsableId = data.responsableId?.trim() === '' ? null : data.responsableId;
+
+    // Validate UUID format if provided
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (responsableId && !uuidRegex.test(responsableId)) {
+      console.warn('Invalid UUID format for responsableId:', responsableId);
+      responsableId = null;
+    }
+
+    if (responsableId && responsableId !== existing.responsableId) {
       const responsable = await prisma.user.findUnique({
-        where: { id: data.responsableId },
+        where: { id: responsableId },
       });
       if (!responsable) {
-        throw new NotFoundError('Responsable');
+        // Don't throw error, just set to null (allows clearing invalid responsable)
+        console.warn('Responsable not found, setting to null:', responsableId);
+        responsableId = null;
       }
     }
 
@@ -176,7 +197,7 @@ export const updateDepartment = async (req, res, next) => {
       data: {
         nom: data.nom,
         description: data.description,
-        responsableId: data.responsableId,
+        responsableId: responsableId,
       },
       include: {
         responsable: { select: { id: true, nom: true, prenom: true, email: true } },

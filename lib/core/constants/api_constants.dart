@@ -24,6 +24,7 @@ class ApiConstants {
   static const String schedules = '/schedules';
   static const String audit = '/audit';
   static const String dashboard = '/dashboard';
+static const String settings = '/settings';
 
   // Auth endpoints
   static const String login = '/login';

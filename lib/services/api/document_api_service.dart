@@ -10,6 +10,11 @@ class DocumentApiService extends BaseApiService {
   @override
   String get baseEndpoint => ApiConstants.documents;
 
+  /// Base URL without the /api/v1 API prefix, used to resolve uploaded-file
+  /// paths (stored as relative URLs like /uploads/documents/...).
+  String get _fileBaseUrl =>
+      ApiConstants.baseUrl.replaceFirst('/api/v1', '');
+
   Future<Map<String, dynamic>> getDocuments({
     int? page,
     int? limit,
@@ -57,6 +62,17 @@ class DocumentApiService extends BaseApiService {
   Future<Uint8List> downloadDocument(String id) async {
     final response = await apiClient.dio.get(
       '$baseEndpoint/$id/download',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(response.data);
+  }
+
+  /// Download an arbitrary uploaded file path (e.g. `/uploads/documents/...`)
+  /// as bytes. Resolves relative paths against the server origin (outside /api/v1).
+  Future<Uint8List> downloadFilePath(String path) async {
+    final url = path.startsWith('http') ? path : '$_fileBaseUrl$path';
+    final response = await apiClient.dio.get(
+      url,
       options: Options(responseType: ResponseType.bytes),
     );
     return Uint8List.fromList(response.data);

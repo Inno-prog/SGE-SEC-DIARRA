@@ -66,7 +66,8 @@ final currentUserProvider = Provider<UserModel?>((ref) {
 final lastLocationProvider = StateProvider<String>((ref) => AppRoutes.dashboard);
 
 final initialLocationProvider = Provider<String>((ref) {
-  return AppRoutes.login;
+  final last = ref.watch(lastLocationProvider);
+  return last == AppRoutes.login ? AppRoutes.dashboard : last;
 });
 
 final themeModeProvider = StateProvider<ThemeMode>((ref) => ThemeMode.light);
@@ -162,12 +163,43 @@ final departmentsProvider = FutureProvider<List<DepartmentModel>>((ref) async {
   return data.map((e) => DepartmentModel.fromJson(e)).toList();
 });
 
+/// Department detail with employees and responsable
+final departmentDetailProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+  final service = ref.watch(departmentApiServiceProvider);
+  final response = await service.getDepartmentById(id);
+  return response['department'] ?? response['data'] ?? {};
+});
+
 // ─── Positions ───────────────────────────────────────────────────────────────
 final positionsProvider = FutureProvider<List<PositionModel>>((ref) async {
   final service = ref.watch(positionApiServiceProvider);
   final response = await service.getPositions();
   final List<dynamic> data = response['data'] ?? [];
   return data.map((e) => PositionModel.fromJson(e)).toList();
+});
+
+/// Positions with department names populated by joining with departments list
+final positionsWithDepartmentsProvider = FutureProvider<List<PositionModel>>((ref) async {
+  final positions = await ref.watch(positionsProvider.future);
+  final departments = await ref.watch(departmentsProvider.future);
+
+  // Create a map for quick lookup
+  final deptMap = {for (var d in departments) d.id: d.nom};
+
+  // Merge department names into positions
+  return positions.map((p) {
+    final deptNom = p.departementId != null ? deptMap[p.departementId!] : null;
+    return PositionModel(
+      id: p.id,
+      titre: p.titre,
+      description: p.description,
+      departementId: p.departementId,
+      departementNom: deptNom ?? p.departementNom, // fallback to API value if exists
+      salaireMini: p.salaireMini,
+      salaireMaxi: p.salaireMaxi,
+      createdAt: p.createdAt,
+    );
+  }).toList();
 });
 
 // ─── Contracts ───────────────────────────────────────────────────────────────
@@ -395,7 +427,7 @@ final unreadNotificationsCountProvider = Provider.family<int, String?>((ref, use
   return notifs.when(
         data: (list) => list.where((n) => !n.isRead).length,
         loading: () => 0,
-        error: (_, __) => 0,
+        error: (_, _) => 0,
       );
 });
 
@@ -449,6 +481,17 @@ final usersProvider = FutureProvider<List<UserModel>>((ref) async {
   return await authService.getAllUsers();
 });
 
+/// Users for responsable dropdown (active users only)
+final usersForResponsableProvider = FutureProvider<List<UserModel>>((ref) async {
+  final service = ref.watch(userApiServiceProvider);
+  final response = await service.getUsers(limit: 100);
+  final List<dynamic> data = response['data'] ?? [];
+  return data
+      .map((e) => UserModel.fromJson(e))
+      .where((u) => u.isActive)
+      .toList();
+});
+
 // ─── Contract Documents ──────────────────────────────────────────────────────
 final contractDocumentsProvider = FutureProvider.family<List<DocumentModel>, List<String>>((ref, docIds) async {
   if (docIds.isEmpty) return [];
@@ -480,4 +523,23 @@ final employeeDocumentsProvider = FutureProvider.family<List<DocumentModel>, ({S
   // Handle different response formats
   final List<dynamic> data = response['data'] ?? response['documents'] ?? response['items'] ?? [];
   return data.map((e) => DocumentModel.fromJson(e)).toList();
+});
+
+// ─── Settings ───────────────────────────────────────────────────────────────────
+/// Company name for app title customization
+final companyNameProvider = FutureProvider<String?>((ref) async {
+  final service = ref.watch(settingsApiServiceProvider);
+  try {
+    final response = await service.getSettings();
+    return response['companyName'] ?? response['company_name'];
+  } catch (e) {
+    debugPrint('Failed to load company name: $e');
+    return null;
+  }
+});
+
+/// Full app name with company name (e.g., "SGE MyCompany")
+final appNameProvider = Provider<String>((ref) {
+  final companyName = ref.watch(companyNameProvider).value;
+  return AppConstants.getAppName(companyName: companyName);
 });

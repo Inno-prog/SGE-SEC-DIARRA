@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../providers/providers.dart';
 import '../../models/department_model.dart';
+import '../../core/constants/app_constants.dart';
 
 class DepartmentsScreen extends ConsumerStatefulWidget {
   const DepartmentsScreen({super.key});
@@ -191,7 +193,7 @@ class _DepartmentsPageContent extends ConsumerWidget {
         flex: 2,
         alignment: Alignment.center,
         cell: (d) => d.responsableNom != null
-            ? ProEmployeeCell(name: d.responsableNom!, subtitle: 'Responsable')
+            ? Text(d.responsableNom!, style: const TextStyle(fontWeight: FontWeight.w500))
             : const Text('—'),
       ),
       ProColumn<DepartmentModel>(
@@ -207,6 +209,13 @@ class _DepartmentsPageContent extends ConsumerWidget {
         cell: (d) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ProActionIcon(
+              icon: Icons.visibility_outlined,
+              color: AppColors.primary,
+              tooltip: 'Voir',
+              onTap: () => context.go('${AppRoutes.departments}/${d.id}'),
+            ),
+            const SizedBox(width: 8),
             ProActionIcon(
               icon: Icons.edit_outlined,
               color: Colors.orange.shade800,
@@ -324,7 +333,7 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
 
   @override
   Widget build(BuildContext context) {
-    final employees = ref.watch(allEmployeesProvider);
+    final users = ref.watch(usersForResponsableProvider);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -361,29 +370,50 @@ class _DeptFormState extends ConsumerState<_DeptForm> {
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
-              employees.when(
-                data: (list) => AppDropdown<String>(
-                  label: 'Responsable',
-                  value: _responsableId,
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('Aucun')),
-                    ...list.map(
-                      (e) => DropdownMenuItem(
-                        value: e.id,
-                        child: Text(e.fullName),
-                      ),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    final emp = v != null
-                        ? list.firstWhere((e) => e.id == v)
-                        : null;
-                    setState(() {
-                      _responsableId = v;
-                      _responsableNom = emp?.fullName;
+              users.when(
+                data: (list) {
+                  // Validate that the current responsableId exists in the user list
+                  // If not, reset to null to avoid dropdown assertion error
+                  final validResponsableId = _responsableId != null && list.any((u) => u.id == _responsableId)
+                      ? _responsableId
+                      : null;
+                  if (validResponsableId != _responsableId) {
+                    // Use post-frame callback to avoid setState during build
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _responsableId = validResponsableId;
+                          _responsableNom = validResponsableId != null
+                              ? list.firstWhere((u) => u.id == validResponsableId).fullName
+                              : null;
+                        });
+                      }
                     });
-                  },
-                ),
+                  }
+
+                  return AppDropdown<String>(
+                    label: 'Responsable',
+                    value: validResponsableId,
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Aucun')),
+                      ...list.map(
+                        (u) => DropdownMenuItem(
+                          value: u.id,
+                          child: Text(u.fullName),
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      final user = v != null
+                          ? list.firstWhere((u) => u.id == v)
+                          : null;
+                      setState(() {
+                        _responsableId = v;
+                        _responsableNom = user?.fullName;
+                      });
+                    },
+                  );
+                },
                 loading: () => const SizedBox(),
                 error: (e, _) => Center(
                   child: Text(

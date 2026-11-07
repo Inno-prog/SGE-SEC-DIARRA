@@ -7,6 +7,30 @@ import {
   payrollQuerySchema,
 } from '../utils/validation.js';
 
+function getMonthRange(mois, annee) {
+  const start = new Date(Date.UTC(annee, mois - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(annee, mois, 0, 23, 59, 59, 999));
+  return { start, end };
+}
+
+async function sumEmployeePrimesForPeriod(employeeId, mois, annee) {
+  const { start, end } = getMonthRange(mois, annee);
+  const result = await prisma.bonus.aggregate({
+    where: {
+      employeeId,
+      statut: 'active',
+      dateAttribution: { gte: start, lte: end },
+    },
+    _sum: { montant: true },
+  });
+  return result._sum.montant ?? 0;
+}
+
+function computeNet(salaireBase, primes, bonus, heuresSupp, tauxHeureSupp, retenues, cotisationsSociales, impots) {
+  const brut = salaireBase + primes + bonus + (heuresSupp * tauxHeureSupp);
+  return brut - retenues - cotisationsSociales - impots;
+}
+
 export const getPayrolls = async (req, res, next) => {
   try {
     const { page, limit, sortBy, sortOrder, employeeId, mois, annee, statut } = req.query;
@@ -86,9 +110,28 @@ export const createPayroll = async (req, res, next) => {
       throw new AppError('Un bulletin existe déjà pour cet employé ce mois-ci', 409, 'DUPLICATE_PAYROLL');
     }
 
+    const primes = await sumEmployeePrimesForPeriod(data.employeeId, data.mois, data.annee);
+    const bonus = Number(data.bonus ?? 0);
+    const heuresSupp = Number(data.heuresSupp ?? 0);
+    const tauxHeureSupp = Number(data.tauxHeureSupp ?? 0);
+    const salaireBase = Number(data.salaireBase ?? 0);
+    const retenues = Number(data.retenues ?? 0);
+    const cotisationsSociales = Number(data.cotisationsSociales ?? 0);
+    const impots = Number(data.impots ?? 0);
+    const netAPayer = computeNet(salaireBase, primes, bonus, heuresSupp, tauxHeureSupp, retenues, cotisationsSociales, impots);
+
     const payroll = await prisma.payroll.create({
       data: {
         ...data,
+        primes,
+        bonus,
+        heuresSupp,
+        tauxHeureSupp,
+        salaireBase,
+        retenues,
+        cotisationsSociales,
+        impots,
+        netAPayer,
         createdBy: req.user.id,
       },
       include: {
@@ -126,6 +169,17 @@ export const updatePayroll = async (req, res, next) => {
 
     const updateData = { ...data };
     if (data.datePaiement) updateData.datePaiement = new Date(data.datePaiement);
+
+    const primes = await sumEmployeePrimesForPeriod(existing.employeeId, existing.mois, existing.annee);
+    const salaireBase = Number(updateData.salaireBase ?? existing.salaireBase ?? 0);
+    const bonus = Number(updateData.bonus ?? existing.bonus ?? 0);
+    const heuresSupp = Number(updateData.heuresSupp ?? existing.heuresSupp ?? 0);
+    const tauxHeureSupp = Number(updateData.tauxHeureSupp ?? existing.tauxHeureSupp ?? 0);
+    const retenues = Number(updateData.retenues ?? existing.retenues ?? 0);
+    const cotisationsSociales = Number(updateData.cotisationsSociales ?? existing.cotisationsSociales ?? 0);
+    const impots = Number(updateData.impots ?? existing.impots ?? 0);
+    updateData.primes = primes;
+    updateData.netAPayer = computeNet(salaireBase, primes, bonus, heuresSupp, tauxHeureSupp, retenues, cotisationsSociales, impots);
 
     const payroll = await prisma.payroll.update({
       where: { id },
@@ -213,16 +267,16 @@ export const generatePayroll = async (req, res, next) => {
         continue;
       }
 
-      // Calculate payroll based on employee data
+      // Calculate payroll based on employee data and attributed active bonuses
       const salaireBase = emp.salaire;
-      const primes = 0;
+      const primes = await sumEmployeePrimesForPeriod(emp.id, mois, annee);
       const bonus = 0;
       const heuresSupp = 0;
       const tauxHeureSupp = 0;
       const retenues = 0;
       const cotisationsSociales = salaireBase * 0.22; // 22% social contributions
       const impots = 0; // Les employés ne paient pas d'impôts
-      const netAPayer = salaireBase + primes + bonus - retenues - cotisationsSociales - impots;
+      const netAPayer = computeNet(salaireBase, primes, bonus, heuresSupp, tauxHeureSupp, retenues, cotisationsSociales, impots);
 
       const payroll = await prisma.payroll.create({
         data: {

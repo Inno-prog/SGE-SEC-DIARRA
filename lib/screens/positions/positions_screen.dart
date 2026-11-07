@@ -18,7 +18,7 @@ class _PositionsScreenState extends ConsumerState<PositionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final positions = ref.watch(positionsProvider);
+    final positions = ref.watch(positionsWithDepartmentsProvider);
 
     return Scaffold(
       appBar: AppBar(

@@ -186,7 +186,7 @@ class _UsersPageContent extends ConsumerWidget {
             const SizedBox(width: 8),
             ProActionIcon(
               icon: u.isActive ? Icons.lock_outline : Icons.lock_open_outlined,
-              color: u.isActive ? Colors.red.shade700 : AppColors.success,
+              color: u.isActive ? AppColors.success : Colors.red.shade700,
               tooltip: u.isActive ? 'Désactiver' : 'Activer',
               onTap: () async {
                 await ref.read(userApiServiceProvider).updateUserStatus(u.id, !u.isActive);

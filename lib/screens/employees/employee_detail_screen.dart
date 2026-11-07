@@ -9,6 +9,7 @@ import '../../providers/providers.dart';
 import '../../utils/document_viewer.dart';
 import '../../models/employee_model.dart';
 import '../../models/models.dart';
+import '../documents/pdf_viewer_screen.dart';
 
 class EmployeeDetailScreen extends ConsumerWidget {
   final String id;
@@ -146,16 +147,33 @@ class _InfoTab extends ConsumerWidget {
     DocumentModel document,
   ) async {
     try {
-      // Use document URL directly for web (opens in new tab)
-      if (document.url.isNotEmpty) {
-        await openDocumentUrl(document.url, document.nom);
-      } else {
-        // Fallback to download if no URL
-        final documentService = ref.read(documentApiServiceProvider);
-        final bytes = await documentService.downloadDocument(document.id);
-        if (context.mounted) {
-          await openDocument(bytes, documentService.guessMimeType(document.nom), document.nom);
-        }
+      final documentService = ref.read(documentApiServiceProvider);
+      final bytes = await documentService.downloadFilePath(document.url);
+      if (context.mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              onBuild: (format) async => bytes,
+              title: document.nom,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+    }
+  }
+
+  Future<void> _downloadDocument(
+    BuildContext context,
+    WidgetRef ref,
+    DocumentModel document,
+  ) async {
+    try {
+      final documentService = ref.read(documentApiServiceProvider);
+      final bytes = await documentService.downloadFilePath(document.url);
+      if (context.mounted) {
+        await downloadDocumentBytes(bytes, documentService.guessMimeType(document.nom), document.nom);
       }
     } catch (e) {
       if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
@@ -226,6 +244,8 @@ class _InfoTab extends ConsumerWidget {
           employee: employee,
           onViewDocument: (context, ref, document) =>
               _viewDocument(context, ref, document),
+          onDownloadDocument: (context, ref, document) =>
+              _downloadDocument(context, ref, document),
         ),
       ],
     );
@@ -293,8 +313,13 @@ class _InfoCard extends StatelessWidget {
 class _DocCard extends ConsumerWidget {
   final EmployeeModel employee;
   final Future<void> Function(BuildContext context, WidgetRef ref, DocumentModel document) onViewDocument;
+  final Future<void> Function(BuildContext context, WidgetRef ref, DocumentModel document) onDownloadDocument;
 
-  const _DocCard({required this.employee, required this.onViewDocument});
+  const _DocCard({
+    required this.employee,
+    required this.onViewDocument,
+    required this.onDownloadDocument,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -343,10 +368,21 @@ class _DocCard extends ConsumerWidget {
                           child: Text(label, style: const TextStyle(fontSize: 13)),
                         ),
                         if (doc != null)
-                          TextButton.icon(
-                            onPressed: () => onViewDocument(context, ref, doc),
-                            icon: const Icon(Icons.visibility_outlined, size: 18),
-                            label: const Text('Voir'),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => onViewDocument(context, ref, doc),
+                                icon: const Icon(Icons.visibility_outlined, size: 18),
+                                label: const Text('Voir'),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                onPressed: () => onDownloadDocument(context, ref, doc),
+                                icon: const Icon(Icons.download_outlined, size: 18),
+                                label: const Text('Télécharger'),
+                              ),
+                            ],
                           )
                         else
                           Text(
@@ -454,9 +490,19 @@ class _ContractCard extends ConsumerWidget {
   ) async {
     try {
       final service = ref.read(documentApiServiceProvider);
-      final bytes = await service.downloadDocument(fileId);
+      final response = await service.getDocumentById(fileId);
+      final docData = response['document'] ?? response['data'];
+      final url = docData != null ? (docData['url'] as String? ?? '') : '';
+      final bytes = await service.downloadFilePath(url);
       if (context.mounted) {
-        await openDocument(bytes, service.guessMimeType(fileName), fileName);
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              onBuild: (format) async => bytes,
+              title: fileName,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);

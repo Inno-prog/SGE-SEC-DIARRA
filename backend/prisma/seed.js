@@ -94,6 +94,26 @@ async function main() {
   const [dept1, dept2, dept3, dept4, dept5] = departments;
   console.log('✅ Departments created');
 
+  // Assign a responsable (User) to each department so the "Responsable" column
+  // is populated in the department list.
+  const responsableByDept = {
+    [dept1.id]: admin.id,    // Direction Générale → Admin
+    [dept2.id]: hr.id,       // Ressources Humaines → HR
+    [dept3.id]: hr.id,       // Comptabilité → HR
+    [dept4.id]: manager.id,  // Informatique → Manager
+    [dept5.id]: manager.id,  // Commercial → Manager
+  };
+  for (const dept of departments) {
+    const responsableId = responsableByDept[dept.id];
+    if (responsableId) {
+      await prisma.department.update({
+        where: { id: dept.id },
+        data: { responsableId },
+      });
+    }
+  }
+  console.log('✅ Department responsables assigned');
+
   // Create positions
   const positions = [
     { titre: 'Directeur Général', departementId: dept1.id, salaireMini: 500000, salaireMaxi: 1000000 },

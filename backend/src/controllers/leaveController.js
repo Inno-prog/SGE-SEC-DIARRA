@@ -79,11 +79,18 @@ export const createLeave = async (req, res, next) => {
       throw new AppError('Solde de congés maladie insuffisant', 400, 'INSUFFICIENT_BALANCE');
     }
 
-    const leave = await prisma.leave.create({
+const leave = await prisma.leave.create({
       data: {
-        ...data,
+        employeeNom: data.employeeNom,
+        employeePhoto: data.employeePhoto,
+        type: data.type,
         dateDebut: new Date(data.dateDebut),
         dateFin: new Date(data.dateFin),
+        nombreJours: data.nombreJours,
+        motif: data.motif,
+        statut: data.statut,
+        employee: { connect: { id: data.employeeId } },
+        creator: { connect: { id: req.user.id } },
       },
       include: {
         employee: { select: { id: true, matricule: true, nom: true, prenom: true } },
@@ -264,6 +271,107 @@ export const getPendingLeaves = async (req, res, next) => {
     });
 
     res.json({ leaves });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/// Dedicated status change endpoint used by the UI.
+/// Body: { status: 'approuve'|'rejete'|'annule', validatedBy: <userId>, comment?: string }
+export const updateLeaveStatus = async (req, res, next) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const { status, validatedBy, comment } = req.body;
+
+    const existing = await prisma.leave.findUnique({ where: { id } });
+    if (!existing) {
+      throw new NotFoundError('Congé');
+    }
+
+    const wasApproved = existing.statut === 'approuve';
+    const isApproved = status === 'approuve';
+
+    const leave = await prisma.leave.update({
+      where: { id },
+      data: {
+        statut: status,
+        commentaireRH: comment,
+        dateValidation: isApproved && !wasApproved ? new Date() : existing.dateValidation,
+        validePar:
+          (isApproved && !wasApproved) || (wasApproved && !isApproved)
+            ? (validatedBy ?? req.user?.id ?? existing.validePar)
+            : existing.validePar,
+      },
+      include: {
+        employee: { select: { id: true, matricule: true, nom: true, prenom: true, email: true } },
+        creator: { select: { id: true, nom: true, prenom: true } },
+      },
+    });
+
+    // Update leave balances when moving to/from approved
+    if (isApproved && !wasApproved) {
+      const employee = await prisma.employee.findUnique({ where: { id: leave.employeeId } });
+      if (employee) {
+        if (leave.type === 'annuel') {
+          await prisma.employee.update({
+            where: { id: leave.employeeId },
+            data: { soldeCongesAnnuels: { decrement: leave.nombreJours } },
+          });
+        } else if (leave.type === 'maladie') {
+          await prisma.employee.update({
+            where: { id: leave.employeeId },
+            data: { soldeCongesMaladie: { decrement: leave.nombreJours } },
+          });
+        }
+      }
+    } else if (wasApproved && !isApproved) {
+      const employee = await prisma.employee.findUnique({ where: { id: leave.employeeId } });
+      if (employee) {
+        if (leave.type === 'annuel') {
+          await prisma.employee.update({
+            where: { id: leave.employeeId },
+            data: { soldeCongesAnnuels: { increment: leave.nombreJours } },
+          });
+        } else if (leave.type === 'maladie') {
+          await prisma.employee.update({
+            where: { id: leave.employeeId },
+            data: { soldeCongesMaladie: { increment: leave.nombreJours } },
+          });
+        }
+      }
+    }
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user.id,
+        userNom: `${req.user.prenom} ${req.user.nom}`,
+        action: 'modification',
+        collection: 'leaves',
+        documentId: leave.id,
+        description: `Changement de statut du congé de ${leave.employee.prenom} ${leave.employee.nom} vers ${status}`,
+      },
+    });
+
+    // Notify employee of status change
+    if (status !== existing.statut) {
+      const employeeUser = await prisma.user.findFirst({
+        where: { employeeId: leave.employeeId },
+        select: { id: true },
+      });
+      if (employeeUser) {
+        await prisma.notification.create({
+          data: {
+            userId: employeeUser.id,
+            titre: 'Mise à jour de votre demande de congé',
+            message: `Votre demande de congé a été ${status === 'approuve' ? 'approuvée' : status === 'rejete' ? 'rejetée' : 'mise à jour'}`,
+            type: 'leave_request',
+            actionRoute: `/leaves/${leave.id}`,
+          },
+        });
+      }
+    }
+
+    res.json({ leave });
   } catch (error) {
     next(error);
   }

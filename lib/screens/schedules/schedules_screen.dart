@@ -314,7 +314,12 @@ class _SchedulesPageContent extends ConsumerWidget {
   }
 
   Future<void> _delete(BuildContext context, WidgetRef ref, String id) async {
-    await ref.read(scheduleApiServiceProvider).deleteSchedule(id);
-    if (context.mounted) showSnack(context, 'Horaire supprimé');
+    try {
+      await ref.read(scheduleApiServiceProvider).deleteSchedule(id);
+      ref.invalidate(schedulesProvider);
+      if (context.mounted) showSnack(context, 'Horaire supprimé');
+    } catch (e) {
+      if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+    }
   }
 }

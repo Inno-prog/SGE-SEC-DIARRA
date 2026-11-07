@@ -18,13 +18,38 @@ class DepartmentModel {
   });
 
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
+    // Handle both flat fields (responsableNom/responsable_nom) and nested responsable object
+    String? responsableId = json['responsableId'] ?? json['responsable_id'];
+    String? responsableNom = json['responsableNom'] ?? json['responsable_nom'];
+
+    // If responsable is a nested object, extract nom + prenom
+    if (responsableNom == null && json['responsable'] is Map) {
+      final responsable = json['responsable'] as Map<String, dynamic>;
+      final nom = (responsable['nom'] ?? '').toString();
+      final prenom = (responsable['prenom'] ?? '').toString();
+      if (nom.isNotEmpty || prenom.isNotEmpty) {
+        responsableNom = '$prenom $nom'.trim();
+      }
+      responsableId ??= responsable['id']?.toString();
+    }
+
+    // Handle nombreEmployes from _count.employees (backend returns _count: { employees: N })
+    int nombreEmployes = 0;
+    if (json['nombreEmployes'] != null) {
+      nombreEmployes = (json['nombreEmployes'] as num).toInt();
+    } else if (json['nombre_employes'] != null) {
+      nombreEmployes = (json['nombre_employes'] as num).toInt();
+    } else if (json['_count'] is Map && json['_count']['employees'] != null) {
+      nombreEmployes = (json['_count']['employees'] as num).toInt();
+    }
+
     return DepartmentModel(
-      id: json['id'] ?? '',
-      nom: json['nom'] ?? '',
-      description: json['description'],
-      responsableId: json['responsableId'] ?? json['responsable_id'],
-      responsableNom: json['responsableNom'] ?? json['responsable_nom'],
-      nombreEmployes: json['nombreEmployes'] ?? json['nombre_employes'] ?? 0,
+      id: json['id']?.toString() ?? '',
+      nom: json['nom']?.toString() ?? '',
+      description: json['description']?.toString(),
+      responsableId: responsableId?.toString(),
+      responsableNom: (responsableNom?.isEmpty ?? true) ? null : responsableNom,
+      nombreEmployes: nombreEmployes,
       createdAt: json['createdAt'] != null || json['created_at'] != null
           ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
           : DateTime.now(),

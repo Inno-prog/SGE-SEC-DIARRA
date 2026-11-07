@@ -260,25 +260,37 @@ class _LeaveTile extends ConsumerWidget {
     }
     // Map frontend status to backend API value
     final backendStatus = _mapLeaveStatusToBackend(statut);
-    await ref
-        .read(leaveApiServiceProvider)
-        .updateLeaveStatus(leave.id, backendStatus, user.fullName, commentaire);
-    if (context.mounted) {
-      // Invalider les providers pour rafraîchir les onglets
-      final currentUser = ref.read(currentUserProvider)!;
-      final isRH = currentUser.role == AppConstants.roleAdmin ||
-          currentUser.role == AppConstants.roleRH ||
-          currentUser.role == AppConstants.roleDirector;
-      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leavePending)));
-      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leaveApproved)));
-      ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : currentUser.employeeId, status: AppConstants.leaveRejected)));
-      ref.invalidate(pendingLeavesProvider);
-      showSnack(
-        context,
-        statut == AppConstants.leaveApproved
-            ? 'Congé approuvé'
-            : 'Congé refusé',
-      );
+    try {
+      await ref
+          .read(leaveApiServiceProvider)
+          .updateLeaveStatus(leave.id, backendStatus, user.id, commentaire);
+      if (context.mounted) {
+        // Invalider les providers pour rafraîchir les onglets
+        final currentUser = ref.read(currentUserProvider)!;
+        final isRH = currentUser.role == AppConstants.roleAdmin ||
+            currentUser.role == AppConstants.roleRH ||
+            currentUser.role == AppConstants.roleDirector;
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leavePending)));
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leaveApproved)));
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leaveRejected)));
+        ref.invalidate(pendingLeavesProvider);
+        showSnack(
+          context,
+          statut == AppConstants.leaveApproved
+              ? 'Congé approuvé'
+              : 'Congé refusé',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showSnack(context, 'Erreur: $e', isError: true);
+      }
     }
   }
 }
@@ -380,34 +392,31 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider)!;
-    // Use user.employeeId directly - it should be set from the backend
     _employeeId = user.employeeId;
     _employeeNom = user.fullName;
     _employeePhoto = user.photoUrl;
 
     // Fallback: if employeeId is not set, try to find from employees list
     if (_employeeId == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final employeesAsync = ref.read(allEmployeesProvider);
-        final all = employeesAsync.value;
-        if (all == null) return;
-        try {
-          final emp = all.firstWhere(
-            (e) =>
-                e.fullName == user.fullName ||
-                e.email == user.email,
-          );
-          if (mounted) {
-            setState(() {
-              _employeeId = emp.id;
-              _employeeNom = emp.fullName;
-              _employeePhoto = emp.photoUrl;
-            });
-          }
-        } catch (_) {
-          // No match found, keep original values
-        }
+      _resolveEmployeeId();
+    }
+  }
+
+  Future<void> _resolveEmployeeId() async {
+    final user = ref.read(currentUserProvider)!;
+    final all = await ref.read(allEmployeesProvider.future);
+    if (!mounted) return;
+    try {
+      final emp = all.firstWhere(
+        (e) => e.email == user.email || e.fullName == user.fullName,
+      );
+      setState(() {
+        _employeeId = emp.id;
+        _employeeNom = emp.fullName;
+        _employeePhoto = emp.photoUrl;
       });
+    } catch (_) {
+      // No match found, keep original values
     }
   }
 

@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/network/api_client.dart';
+import 'core/constants/app_constants.dart';
 import 'providers/providers.dart';
 
 Future<void> main() async {
@@ -14,9 +15,14 @@ Future<void> main() async {
   await ApiClient().initialize();
 
   await initializeDateFormatting('fr_FR', null);
+  final prefs = await SharedPreferences.getInstance();
+  final lastLocation = prefs.getString('last_location') ?? AppRoutes.dashboard;
   runApp(
-    const ProviderScope(
-      child: SGEApp(),
+    ProviderScope(
+      overrides: [
+        lastLocationProvider.overrideWith((ref) => lastLocation),
+      ],
+      child: const SGEApp(),
     ),
   );
 }
@@ -33,7 +39,7 @@ class SGEApp extends ConsumerWidget {
       child: _ThemeSaver(
         child: _EmployeeIdFixer(
           child: MaterialApp.router(
-            title: 'SGE Secdiarra',
+            title: AppConstants.baseAppName,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,

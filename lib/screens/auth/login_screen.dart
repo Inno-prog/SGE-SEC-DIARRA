@@ -77,6 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appName = ref.watch(appNameProvider);
     return Scaffold(
       body: Row(
         children: [
@@ -86,23 +87,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const BoxDecoration(
                   gradient: AppColors.primaryGradient,
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.business, size: 80, color: Colors.white),
-                    SizedBox(height: 24),
+                    const Icon(Icons.business, size: 80, color: Colors.white),
+                    const SizedBox(height: 24),
                     Text(
-                      'SGE SEC DIARRA',
-                      style: TextStyle(
+                      appName.toUpperCase(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 40),
-                      child: Text(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: const Text(
                         'Système de Gestion des Employés\nModerne · Efficace · Sécurisé',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -143,9 +144,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Bienvenue sur SGE Secdiarra',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        Text(
+                          'Bienvenue sur $appName',
+                          style: const TextStyle(color: AppColors.textSecondary),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 40),

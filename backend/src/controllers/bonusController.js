@@ -4,8 +4,48 @@ import { validate, validateQuery, validateParams, idParamSchema } from '../utils
 import {
   createBonusSchema,
   updateBonusSchema,
-  paginationSchema,
+  bonusQuerySchema,
 } from '../utils/validation.js';
+
+function getMonthRange(mois, annee) {
+  const start = new Date(Date.UTC(annee, mois - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(annee, mois, 0, 23, 59, 59, 999));
+  return { start, end };
+}
+
+async function syncPayrollPrimes(employeeId, dateAttribution) {
+  const date = dateAttribution instanceof Date ? dateAttribution : new Date(dateAttribution);
+  if (Number.isNaN(date.getTime())) return;
+  const mois = date.getUTCMonth() + 1;
+  const annee = date.getUTCFullYear();
+  const payroll = await prisma.payroll.findUnique({
+    where: { employeeId_mois_annee: { employeeId, mois, annee } },
+  });
+  if (!payroll) return;
+  const { start, end } = getMonthRange(mois, annee);
+  const result = await prisma.bonus.aggregate({
+    where: {
+      employeeId,
+      statut: 'active',
+      dateAttribution: { gte: start, lte: end },
+    },
+    _sum: { montant: true },
+  });
+  const primes = result._sum.montant ?? 0;
+  const salaireBase = Number(payroll.salaireBase ?? 0);
+  const bonus = Number(payroll.bonus ?? 0);
+  const heuresSupp = Number(payroll.heuresSupp ?? 0);
+  const tauxHeureSupp = Number(payroll.tauxHeureSupp ?? 0);
+  const retenues = Number(payroll.retenues ?? 0);
+  const cotisationsSociales = Number(payroll.cotisationsSociales ?? 0);
+  const impots = Number(payroll.impots ?? 0);
+  const brut = salaireBase + primes + bonus + (heuresSupp * tauxHeureSupp);
+  const netAPayer = brut - retenues - cotisationsSociales - impots;
+  await prisma.payroll.update({
+    where: { id: payroll.id },
+    data: { primes, netAPayer },
+  });
+}
 
 export const getBonuses = async (req, res, next) => {
   try {
@@ -93,6 +133,8 @@ export const createBonus = async (req, res, next) => {
       },
     });
 
+    await syncPayrollPrimes(bonus.employeeId, bonus.dateAttribution);
+
     res.status(201).json({ bonus });
   } catch (error) {
     next(error);
@@ -132,6 +174,11 @@ export const updateBonus = async (req, res, next) => {
       },
     });
 
+    await syncPayrollPrimes(bonus.employeeId, bonus.dateAttribution);
+    if (existing.employeeId !== bonus.employeeId || existing.dateAttribution?.getTime?.() !== bonus.dateAttribution?.getTime?.()) {
+      await syncPayrollPrimes(existing.employeeId, existing.dateAttribution);
+    }
+
     res.json({ bonus });
   } catch (error) {
     next(error);
@@ -148,6 +195,7 @@ export const deleteBonus = async (req, res, next) => {
     }
 
     await prisma.bonus.delete({ where: { id } });
+    await syncPayrollPrimes(bonus.employeeId, bonus.dateAttribution);
 
     await prisma.auditLog.create({
       data: {

@@ -1,6 +1,15 @@
 class AppConstants {
-  static const String appName = 'SGE Secdiarra';
+  static const String baseAppName = 'SGE';
   static const String appVersion = '1.0.0';
+
+  /// Get the full app name with optional company name
+  /// Format: "SGE" or "SGE [company name]"
+  static String getAppName({String? companyName}) {
+    if (companyName != null && companyName.trim().isNotEmpty) {
+      return '$baseAppName ${companyName.trim()}';
+    }
+    return baseAppName;
+  }
 
   // Firestore collections
   static const String colUsers = 'users';
@@ -88,6 +97,7 @@ class AppRoutes {
   static const String employeeDetail = '/employees/:id';
   static const String employeeAdd = '/employees/add';
   static const String departments = '/departments';
+  static const String departmentDetail = '/departments/:id';
   static const String positions = '/positions';
   static const String contracts = '/contracts';
   static const String attendance = '/attendance';

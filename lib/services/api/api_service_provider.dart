@@ -20,6 +20,7 @@ import 'audit_api_service.dart';
 import 'dashboard_api_service.dart';
 import 'position_api_service.dart';
 import 'user_api_service.dart';
+import 'settings_api_service.dart';
 
 // Auth API Service Provider
 final authApiServiceProvider = Provider<AuthApiService>((ref) {
@@ -120,6 +121,11 @@ final dashboardApiServiceProvider = Provider<DashboardApiService>((ref) {
 // Position API Service Provider
 final positionApiServiceProvider = Provider<PositionApiService>((ref) {
   return PositionApiService();
+});
+
+// Settings API Service Provider
+final settingsApiServiceProvider = Provider<SettingsApiService>((ref) {
+  return SettingsApiService();
 });
 
 // User API Service Provider

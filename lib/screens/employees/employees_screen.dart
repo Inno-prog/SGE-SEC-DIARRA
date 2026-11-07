@@ -153,20 +153,20 @@ class _EmployeesPageContent extends ConsumerWidget {
   List<ProColumn<EmployeeModel>> _buildColumns() {
     return [
       ProColumn<EmployeeModel>(
+        label: 'Employé',
+        flex: 3,
+        cell: (e) => ProEmployeeCell(
+          name: e.fullName,
+          subtitle: e.poste,
+        ),
+      ),
+      ProColumn<EmployeeModel>(
         label: 'Matricule',
         flex: 2,
         alignment: Alignment.center,
         cell: (e) => Text(
           e.matricule,
           style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-        ),
-      ),
-      ProColumn<EmployeeModel>(
-        label: 'Employé',
-        flex: 4,
-        cell: (e) => ProEmployeeCell(
-          name: e.fullName,
-          subtitle: e.poste,
         ),
       ),
       ProColumn<EmployeeModel>(

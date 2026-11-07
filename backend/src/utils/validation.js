@@ -219,6 +219,15 @@ export const updateLeaveSchema = z.object({
   validePar: z.string().uuid().optional().nullable(),
 });
 
+/// Schema for the dedicated leave-status endpoint used by the UI
+/// (PATCH /leaves/:id/status). Accepts the flat payload sent by the app:
+/// { status, validatedBy, comment }
+export const updateLeaveStatusSchema = z.object({
+  status: z.enum(['en_attente', 'approuve', 'rejete', 'annule']),
+  validatedBy: z.string().min(1, 'ID validateur requis'),
+  comment: z.string().optional().nullable(),
+});
+
 // Payroll schemas
 export const createPayrollSchema = z.object({
   employeeId: z.string().uuid('ID employé invalide'),
@@ -488,6 +497,11 @@ export const payrollQuerySchema = paginationSchema.extend({
   mois: z.coerce.number().int().min(1).max(12).optional(),
   annee: z.coerce.number().int().min(2000).max(2100).optional(),
   statut: z.enum(['brouillon', 'valide', 'paye']).optional(),
+});
+
+export const bonusQuerySchema = paginationSchema.extend({
+  employeeId: z.string().uuid().optional(),
+  statut: z.enum(['active', 'paye', 'annule']).optional(),
 });
 
 export const contractQuerySchema = paginationSchema.extend({

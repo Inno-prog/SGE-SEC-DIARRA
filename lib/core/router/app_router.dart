@@ -11,6 +11,7 @@ import '../../screens/employees/employees_screen.dart';
 import '../../screens/employees/employee_detail_screen.dart';
 import '../../screens/employees/employee_form_screen.dart';
 import '../../screens/departments/departments_screen.dart';
+import '../../screens/departments/department_detail_screen.dart';
 import '../../screens/positions/positions_screen.dart';
 import '../../screens/contracts/contracts_screen.dart';
 import '../../screens/contracts/contract_detail_screen.dart';
@@ -84,9 +85,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.security;
       }
 
-      // Save last location for authenticated routes (debounced)
-      if (isLoggedIn && state.matchedLocation.startsWith('/') && state.matchedLocation != AppRoutes.login) {
-        // Use a simple debounce by only saving occasionally
+      // Save last location for authenticated routes
+      if (isLoggedIn &&
+          state.matchedLocation.startsWith('/') &&
+          state.matchedLocation != AppRoutes.login) {
+        ref.read(lastLocationProvider.notifier).state = state.matchedLocation;
         Future.microtask(() async {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('last_location', state.matchedLocation);
@@ -115,6 +118,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (_, state) => EmployeeFormScreen(employeeId: state.pathParameters['id']),
           ),
           GoRoute(path: AppRoutes.departments, builder: (_, __) => const DepartmentsScreen()),
+          GoRoute(
+            path: AppRoutes.departmentDetail,
+            builder: (_, state) => DepartmentDetailScreen(departmentId: state.pathParameters['id']!),
+          ),
           GoRoute(path: AppRoutes.positions, builder: (_, __) => const PositionsScreen()),
           GoRoute(
             path: '/contracts/:id',
@@ -210,27 +217,37 @@ class _SideNav extends ConsumerWidget {
           const SizedBox(height: 48),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.business, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('SGE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                      Text('Secdiarra', style: TextStyle(color: Colors.white60, fontSize: 12)),
-                    ],
-                  ),
-                ),
-              ],
+            child: Consumer(
+              builder: (context, ref, _) {
+                final appName = ref.watch(appNameProvider);
+                final parts = appName.split(' ');
+                final baseName = parts.first;
+                final companyName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.business, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(baseName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                          if (companyName.isNotEmpty)
+                            Text(companyName, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 24),

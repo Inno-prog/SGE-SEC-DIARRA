@@ -73,8 +73,14 @@ class _PayrollScreenState extends ConsumerState<PayrollScreen> {
                 message: 'Supprimer la fiche de ${p.employeeNom} ?',
               );
               if (ok && context.mounted) {
-                await ref.read(payrollApiServiceProvider).deletePayroll(p.id);
-                if (context.mounted) showSnack(context, 'Fiche supprimée');
+                try {
+                  await ref.read(payrollApiServiceProvider).deletePayroll(p.id);
+                  ref.invalidate(payrollProvider(PayrollParams(month: _mois, year: _annee)));
+                  ref.invalidate(allPayrollsProvider);
+                  if (context.mounted) showSnack(context, 'Fiche supprimée');
+                } catch (e) {
+                  if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+                }
               }
             },
           );

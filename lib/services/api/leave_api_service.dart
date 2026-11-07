@@ -18,10 +18,23 @@ class LeaveApiService extends BaseApiService {
     if (page != null) query['page'] = page;
     if (limit != null) query['limit'] = limit;
     if (employeeId != null) query['employeeId'] = employeeId;
-    if (status != null) query['status'] = status;
+    if (status != null) query['statut'] = _statusForApi(status);
     if (sortBy != null) query['sortBy'] = sortBy;
     if (sortOrder != null) query['sortOrder'] = sortOrder;
     return await get('', query: query);
+  }
+
+  String _statusForApi(String status) {
+    switch (status) {
+      case 'approuvé':
+        return 'approuve';
+      case 'refusé':
+        return 'rejete';
+      case 'annulé':
+        return 'annule';
+      default:
+        return status;
+    }
   }
 
   Future<Map<String, dynamic>> getLeaveById(String id) async {

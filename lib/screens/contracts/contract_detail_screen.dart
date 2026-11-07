@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
 import '../../utils/document_viewer.dart';
+import '../../services/api/document_api_service.dart';
 import 'contract_form.dart';
+import '../documents/pdf_viewer_screen.dart';
 
 class ContractDetailScreen extends ConsumerWidget {
   final String contractId;
@@ -158,7 +162,7 @@ class ContractDetailScreen extends ConsumerWidget {
                       icon: Icons.folder_open_outlined,
                     );
                   }
-                  return ListView.builder(
+return ListView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: documents.length,
@@ -166,18 +170,30 @@ class ContractDetailScreen extends ConsumerWidget {
                       final doc = documents[i];
                       return _DocumentTile(
                         document: doc,
-                        onView: () async {
+                        view: () async {
                           try {
-                            // Use document URL directly for web (opens in new tab)
-                            if (doc.url.isNotEmpty) {
-                              await openDocumentUrl(doc.url, doc.nom);
-                            } else {
-                              // Fallback to download if no URL
-                              final documentService = ref.read(documentApiServiceProvider);
-                              final bytes = await documentService.downloadDocument(doc.id);
-                              if (context.mounted) {
-                                await openDocumentBytes(bytes, documentService.guessMimeType(doc.nom), doc.nom);
-                              }
+                            final documentService = ref.read(documentApiServiceProvider);
+                            final bytes = await documentService.downloadFilePath(doc.url);
+                            if (context.mounted) {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => PdfViewerScreen(
+                                    onBuild: (format) async => bytes,
+                                    title: doc.nom,
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+                          }
+                        },
+                        download: () async {
+                          try {
+                            final documentService = ref.read(documentApiServiceProvider);
+                            final bytes = await documentService.downloadFilePath(doc.url);
+                            if (context.mounted) {
+                              await downloadDocumentBytes(bytes, documentService.guessMimeType(doc.nom), doc.nom);
                             }
                           } catch (e) {
                             if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
@@ -323,13 +339,15 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-class _DocumentTile extends StatelessWidget {
+class _DocumentTile extends ConsumerWidget {
   final DocumentModel document;
-  final VoidCallback onView;
+  final VoidCallback view;
+  final VoidCallback download;
 
   const _DocumentTile({
     required this.document,
-    required this.onView,
+    required this.view,
+    required this.download,
   });
 
   String _formatFileSize(int bytes) {
@@ -387,7 +405,7 @@ class _DocumentTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _getFileColor(document.nom);
     final icon = _getFileIcon(document.nom);
 
@@ -457,11 +475,22 @@ class _DocumentTile extends StatelessWidget {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.visibility_outlined),
-              onPressed: onView,
-              tooltip: 'Voir / Ouvrir',
-              color: AppColors.primary,
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined),
+                  onPressed: view,
+                  tooltip: 'Voir / Ouvrir',
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.download_outlined),
+                  onPressed: download,
+                  tooltip: 'Télécharger',
+                  color: AppColors.textSecondary,
+                ),
+              ],
             ),
           ],
         ),
