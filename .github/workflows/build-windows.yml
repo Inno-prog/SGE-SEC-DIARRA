@@ -25,6 +25,7 @@ jobs:
         run: flutter build windows --release
 
       - name: Verify build output
+        shell: bash
         run: |
           echo "=== Checking build output directories ==="
           find build/windows -name "*.exe" -type f 2>/dev/null | head -20
@@ -42,6 +43,7 @@ jobs:
         run: iscc windows/installer.iss
 
       - name: Verify installer output
+        shell: bash
         run: |
           echo "=== Installer output ==="
           ls -la build/windows/installer/
