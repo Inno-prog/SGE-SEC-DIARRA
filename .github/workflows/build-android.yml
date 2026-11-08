@@ -31,7 +31,15 @@ jobs:
 
       - name: Decode keystore
         run: |
+          echo "=== Decoding keystore ==="
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: KEYSTORE_BASE64 secret is empty or not set!"
+            exit 1
+          fi
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
+          echo "=== Verifying keystore file ==="
+          ls -la upload-keystore.jks
+          file upload-keystore.jks
 
       - name: Build Android APK
         env:
