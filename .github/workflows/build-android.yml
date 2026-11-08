@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, postgres]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -21,7 +21,15 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
+
       - name: Build Android APK
+        env:
+          MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
         run: flutter build apk --release
 
       - name: Upload Android APK

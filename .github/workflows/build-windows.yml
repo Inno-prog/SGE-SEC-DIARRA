@@ -2,7 +2,7 @@ name: Build Windows EXE
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, postgres]
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -61,7 +61,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sge-secdiarra-windows-exe
-          path: |
-            build/windows/x64/runner/Release/sge_secdiarra.exe
-            build/windows/runner/Release/sge_secdiarra.exe
+          path: build/windows/x64/runner/Release/
           retention-days: 14
