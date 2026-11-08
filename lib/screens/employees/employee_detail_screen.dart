@@ -9,7 +9,7 @@ import '../../providers/providers.dart';
 import '../../utils/document_viewer.dart';
 import '../../models/employee_model.dart';
 import '../../models/models.dart';
-import '../../services/firestore_service.dart';
+import '../documents/pdf_viewer_screen.dart';
 
 class EmployeeDetailScreen extends ConsumerWidget {
   final String id;
@@ -144,19 +144,36 @@ class _InfoTab extends ConsumerWidget {
   Future<void> _viewDocument(
     BuildContext context,
     WidgetRef ref,
-    String? fileId,
-    String fileName,
+    DocumentModel document,
   ) async {
-    if (fileId == null || fileId.isEmpty) {
-      if (context.mounted)
-        showSnack(context, 'Aucun document disponible', isError: true);
-      return;
-    }
     try {
-      final service = ref.read(firestoreServiceProvider);
-      final bytes = await service.getDocumentBytes(fileId);
+      final documentService = ref.read(documentApiServiceProvider);
+      final bytes = await documentService.downloadFilePath(document.url);
       if (context.mounted) {
-        await openDocument(bytes, service.guessMimeType(fileName), fileName);
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              onBuild: (format) async => bytes,
+              title: document.nom,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
+    }
+  }
+
+  Future<void> _downloadDocument(
+    BuildContext context,
+    WidgetRef ref,
+    DocumentModel document,
+  ) async {
+    try {
+      final documentService = ref.read(documentApiServiceProvider);
+      final bytes = await documentService.downloadFilePath(document.url);
+      if (context.mounted) {
+        await downloadDocumentBytes(bytes, documentService.guessMimeType(document.nom), document.nom);
       }
     } catch (e) {
       if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);
@@ -225,8 +242,10 @@ class _InfoTab extends ConsumerWidget {
         const SizedBox(height: 16),
         _DocCard(
           employee: employee,
-          onViewDocument: (fileId, fileName) =>
-              _viewDocument(context, ref, fileId, fileName),
+          onViewDocument: (context, ref, document) =>
+              _viewDocument(context, ref, document),
+          onDownloadDocument: (context, ref, document) =>
+              _downloadDocument(context, ref, document),
         ),
       ],
     );
@@ -291,19 +310,25 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-class _DocCard extends StatelessWidget {
+class _DocCard extends ConsumerWidget {
   final EmployeeModel employee;
-  final Future<void> Function(String? fileId, String fileName) onViewDocument;
+  final Future<void> Function(BuildContext context, WidgetRef ref, DocumentModel document) onViewDocument;
+  final Future<void> Function(BuildContext context, WidgetRef ref, DocumentModel document) onDownloadDocument;
 
-  const _DocCard({required this.employee, required this.onViewDocument});
+  const _DocCard({
+    required this.employee,
+    required this.onViewDocument,
+    required this.onDownloadDocument,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    final docs = [
-      ('Contrat signé', employee.contratSigneFileId, 'contrat_signe.pdf'),
-      ('Demande', employee.demandeFileId, 'demande.pdf'),
-      ('CV', employee.cvFileId, 'cv.pdf'),
-      ('Diplôme', employee.diplomeFileId, 'diplome.pdf'),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Document types mapping: display name -> API type
+    final docTypes = [
+      ('Contrat signé', 'contrat'),
+      ('Demande', 'demande'),
+      ('CV', 'cv'),
+      ('Diplôme', 'diplome'),
     ];
 
     return Card(
@@ -321,38 +346,99 @@ class _DocCard extends StatelessWidget {
               ),
             ),
             const Divider(height: 20),
-            ...docs.map((doc) {
-              final label = doc.$1;
-              final fileId = doc.$2;
-              final fileName = doc.$3;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.picture_as_pdf_outlined,
-                      color: AppColors.primary,
-                      size: 20,
+            ...docTypes.map((docType) {
+              final label = docType.$1;
+              final apiType = docType.$2;
+              final documentsAsync = ref.watch(employeeDocumentsProvider((employeeId: employee.id, type: apiType)));
+
+              return documentsAsync.when(
+                data: (documents) {
+                  final doc = documents.isNotEmpty ? documents.first : null;
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.picture_as_pdf_outlined,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(label, style: const TextStyle(fontSize: 13)),
+                        ),
+                        if (doc != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () => onViewDocument(context, ref, doc),
+                                icon: const Icon(Icons.visibility_outlined, size: 18),
+                                label: const Text('Voir'),
+                              ),
+                              const SizedBox(width: 4),
+                              TextButton.icon(
+                                onPressed: () => onDownloadDocument(context, ref, doc),
+                                icon: const Icon(Icons.download_outlined, size: 18),
+                                label: const Text('Télécharger'),
+                              ),
+                            ],
+                          )
+                        else
+                          Text(
+                            'Non fourni',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(label, style: const TextStyle(fontSize: 13)),
-                    ),
-                    if (fileId != null && fileId.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: () => onViewDocument(fileId, fileName),
-                        icon: const Icon(Icons.visibility_outlined, size: 18),
-                        label: const Text('Voir'),
-                      )
-                    else
+                  );
+                },
+                loading: () => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(label, style: const TextStyle(fontSize: 13)),
+                      ),
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ),
+                ),
+                error: (e, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(label, style: const TextStyle(fontSize: 13)),
+                      ),
                       Text(
-                        'Non fourni',
+                        'Erreur',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: AppColors.error,
                           fontSize: 12,
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }),
@@ -403,10 +489,20 @@ class _ContractCard extends ConsumerWidget {
     String fileName,
   ) async {
     try {
-      final service = ref.read(firestoreServiceProvider);
-      final bytes = await service.getDocumentBytes(fileId);
+      final service = ref.read(documentApiServiceProvider);
+      final response = await service.getDocumentById(fileId);
+      final docData = response['document'] ?? response['data'];
+      final url = docData != null ? (docData['url'] as String? ?? '') : '';
+      final bytes = await service.downloadFilePath(url);
       if (context.mounted) {
-        await openDocument(bytes, service.guessMimeType(fileName), fileName);
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PdfViewerScreen(
+              onBuild: (format) async => bytes,
+              title: fileName,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) showSnack(context, 'Erreur: $e', isError: true);

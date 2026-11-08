@@ -117,7 +117,16 @@ class AttendanceScreen extends ConsumerWidget {
           ),
           // Stats bar
           attendance.when(
-            data: (list) => _AttendanceStats(list: list),
+            data: (list) {
+              // Deduplicate by employeeId
+              final seen = <String>{};
+              final deduped = list.where((a) {
+                if (seen.contains(a.employeeId)) return false;
+                seen.add(a.employeeId);
+                return true;
+              }).toList();
+              return _AttendanceStats(list: deduped);
+            },
             loading: () => const SizedBox(),
             error: (e, _) => Center(
               child: Text(
@@ -129,17 +138,26 @@ class AttendanceScreen extends ConsumerWidget {
           // List
           Expanded(
             child: attendance.when(
-              data: (list) => list.isEmpty
-                  ? const EmptyState(
-                      message: 'Aucun pointage pour cette date',
-                      icon: Icons.fingerprint,
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: list.length,
-                      itemBuilder: (_, i) =>
-                          _AttendanceTile(attendance: list[i]),
-                    ),
+              data: (list) {
+                // Deduplicate by employeeId - keep only the first entry per employee for this date
+                final seen = <String>{};
+                final deduped = list.where((a) {
+                  if (seen.contains(a.employeeId)) return false;
+                  seen.add(a.employeeId);
+                  return true;
+                }).toList();
+                return deduped.isEmpty
+                    ? const EmptyState(
+                        message: 'Aucun pointage pour cette date',
+                        icon: Icons.fingerprint,
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: deduped.length,
+                        itemBuilder: (_, i) =>
+                            _AttendanceTile(attendance: deduped[i]),
+                      );
+              },
               loading: () => const LoadingWidget(),
               error: (e, _) => Center(child: Text('$e')),
             ),
@@ -308,10 +326,15 @@ class _AttendanceTile extends ConsumerWidget {
                     );
                     if (ok && context.mounted) {
                       await ref
-                          .read(firestoreServiceProvider)
+                          .read(attendanceApiServiceProvider)
                           .deleteAttendance(attendance.id);
-                      if (context.mounted)
+                      if (context.mounted) {
+                        // Invalider le provider pour rafraîchir la liste
+                        final selectedDate = ref.read(selectedAttendanceDateProvider);
+                        ref.invalidate(attendanceProvider(AttendanceParams(date: selectedDate, employeeId: null)));
+                        ref.invalidate(todayAttendanceProvider);
                         showSnack(context, 'Pointage supprimé');
+                      }
                     }
                   }
                 },
@@ -347,6 +370,7 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
   String _statut = 'present';
   TimeOfDay _heureArrivee = TimeOfDay.now();
   TimeOfDay? _heureDepart;
+  final _justificationCtrl = TextEditingController();
   bool _loading = false;
 
   @override
@@ -369,6 +393,39 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
           });
       });
     }
+    // Auto-fill times from normal schedule on initial load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoFillFromNormalSchedule();
+    });
+  }
+
+  @override
+  void dispose() {
+    _justificationCtrl.dispose();
+    super.dispose();
+  }
+
+  void _autoFillFromNormalSchedule() {
+    final schedules = ref.read(schedulesProvider);
+    schedules.whenData((list) {
+      final normalSchedule = list.where((s) => s.type == 'normal').firstOrNull;
+      if (normalSchedule != null && mounted) {
+        final debutParts = normalSchedule.debut.split(':');
+        final finParts = normalSchedule.fin.split(':');
+        if (debutParts.length >= 2 && finParts.length >= 2) {
+          setState(() {
+            _heureArrivee = TimeOfDay(
+              hour: int.tryParse(debutParts[0]) ?? 8,
+              minute: int.tryParse(debutParts[1]) ?? 0,
+            );
+            _heureDepart = TimeOfDay(
+              hour: int.tryParse(finParts[0]) ?? 17,
+              minute: int.tryParse(finParts[1]) ?? 0,
+            );
+          });
+        }
+      }
+    });
   }
 
   Future<void> _pickTime(bool isArrivee) async {
@@ -395,30 +452,40 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
       showSnack(context, 'Sélectionnez un employé', isError: true);
       return;
     }
+    // Validate justification for absent status
+    if (_statut == 'absent' && _justificationCtrl.text.trim().isEmpty) {
+      showSnack(context, 'Le motif d\'absence est obligatoire', isError: true);
+      return;
+    }
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
+      final attendanceService = ref.read(attendanceApiServiceProvider);
       final user = ref.read(currentUserProvider)!;
-      final now = DateTime.now();
       final date = ref.read(selectedAttendanceDateProvider);
-      final heureArrivee = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        _heureArrivee.hour,
-        _heureArrivee.minute,
-      );
-      final heureDepart = _heureDepart != null
-          ? DateTime(
-              date.year,
-              date.month,
-              date.day,
-              _heureDepart!.hour,
-              _heureDepart!.minute,
-            )
-          : null;
 
-      await service.addAttendance(
+      // For absent status, don't set arrival/departure times
+      DateTime? heureArrivee;
+      DateTime? heureDepart;
+      if (_statut != 'absent') {
+        heureArrivee = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          _heureArrivee.hour,
+          _heureArrivee.minute,
+        );
+        heureDepart = _heureDepart != null
+            ? DateTime(
+                date.year,
+                date.month,
+                date.day,
+                _heureDepart!.hour,
+                _heureDepart!.minute,
+              )
+            : null;
+      }
+
+      await attendanceService.createAttendance(
         AttendanceModel(
           id: '',
           employeeId: _employeeId!,
@@ -428,11 +495,17 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
           heureArrivee: heureArrivee,
           heureDepart: heureDepart,
           statut: _statut,
+          justification: _statut == 'absent' ? _justificationCtrl.text.trim() : null,
           methode: 'manuel',
           createdBy: user.id,
         ),
       );
       if (mounted) {
+        // Invalidation AVANT Navigator.pop
+        // Invalider le provider pour la date sélectionnée (mêmes params que dans le build)
+        ref.invalidate(todayAttendanceProvider);
+        ref.invalidate(attendanceProvider(AttendanceParams(date: date, employeeId: null)));
+        ref.invalidate(allAttendancesProvider); // Also invalidate for absences screen
         Navigator.pop(context);
         showSnack(context, 'Pointage enregistré');
       }
@@ -502,47 +575,65 @@ class _AttendanceFormState extends ConsumerState<_AttendanceForm> {
                 'retard',
                 'conge',
               ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) => setState(() => _statut = v!),
+              onChanged: (v) {
+                setState(() {
+                  _statut = v!;
+                  // Auto-fill from normal schedule when 'present' is selected
+                  if (_statut == 'present') {
+                    _autoFillFromNormalSchedule();
+                  }
+                });
+              },
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Heure d\'arrivée',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    subtitle: Text(
-                      _heureArrivee.format(context),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+            if (_statut != 'absent') ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Heure d\'arrivée',
+                        style: TextStyle(fontSize: 13),
                       ),
-                    ),
-                    onTap: () => _pickTime(true),
-                  ),
-                ),
-                Expanded(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text(
-                      'Heure de départ',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    subtitle: Text(
-                      _heureDepart?.format(context) ?? '—',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                      subtitle: Text(
+                        _heureArrivee.format(context),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
+                      onTap: () => _pickTime(true),
                     ),
-                    onTap: () => _pickTime(false),
                   ),
-                ),
-              ],
-            ),
+                  Expanded(
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Heure de départ',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      subtitle: Text(
+                        _heureDepart?.format(context) ?? '—',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      onTap: () => _pickTime(false),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (_statut == 'absent') ...[
+              AppTextField(
+                label: 'Motif d\'absence *',
+                controller: _justificationCtrl,
+                maxLines: 3,
+                hint: 'Raison de l\'absence...',
+              ),
+            ],
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _loading ? null : _save,

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -38,21 +37,14 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
     }
     setState(() => _loading = true);
     try {
-      // Re-authenticate before updating password
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      if (firebaseUser != null && _oldPassCtrl.text.isNotEmpty) {
-        final credential = EmailAuthProvider.credential(
-          email: firebaseUser.email!,
-          password: _oldPassCtrl.text,
-        );
-        await firebaseUser.reauthenticateWithCredential(credential);
-      }
       final authService = ref.read(authServiceProvider);
-      await authService.updatePassword(_newPassCtrl.text);
+      await authService.updatePassword(_oldPassCtrl.text, _newPassCtrl.text);
+
       // Clear mustChangePassword if set
       final user = ref.read(currentUserProvider);
       if (user != null && user.mustChangePassword) {
-        await authService.updateUser(user.copyWith(mustChangePassword: false));
+        final updatedUser = user.copyWith(mustChangePassword: false);
+        await authService.updateUser(updatedUser);
         ref.invalidate(authStateProvider);
       }
       if (mounted) {
@@ -61,15 +53,14 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
         _newPassCtrl.clear();
         _confirmPassCtrl.clear();
       }
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       if (mounted) {
-        final msg = e.code == 'wrong-password' || e.code == 'invalid-credential'
+        final message = e.toString();
+        final msg = message.contains('401') || message.contains('wrong') || message.contains('invalid')
             ? 'Mot de passe actuel incorrect'
-            : 'Erreur: ${e.message}';
+            : 'Erreur: $e';
         showSnack(context, msg, isError: true);
       }
-    } catch (e) {
-      if (mounted) showSnack(context, 'Erreur: $e', isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -197,9 +188,10 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                     value: user.twoFactorEnabled,
                     activeColor: AppColors.primary,
                     onChanged: (v) async {
-                      await ref
-                          .read(authServiceProvider)
-                          .updateUser(user.copyWith(twoFactorEnabled: v));
+                      final authService = ref.read(authServiceProvider);
+                      final updatedUser = user.copyWith(twoFactorEnabled: v);
+                      await authService.updateUser(updatedUser);
+                      ref.invalidate(authStateProvider);
                       if (context.mounted)
                         showSnack(context, v ? '2FA activé' : '2FA désactivé');
                     },

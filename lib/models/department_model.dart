@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class DepartmentModel {
   final String id;
   final String nom;
@@ -19,26 +17,53 @@ class DepartmentModel {
     required this.createdAt,
   });
 
-  factory DepartmentModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory DepartmentModel.fromJson(Map<String, dynamic> json) {
+    // Handle both flat fields (responsableNom/responsable_nom) and nested responsable object
+    String? responsableId = json['responsableId'] ?? json['responsable_id'];
+    String? responsableNom = json['responsableNom'] ?? json['responsable_nom'];
+
+    // If responsable is a nested object, extract nom + prenom
+    if (responsableNom == null && json['responsable'] is Map) {
+      final responsable = json['responsable'] as Map<String, dynamic>;
+      final nom = (responsable['nom'] ?? '').toString();
+      final prenom = (responsable['prenom'] ?? '').toString();
+      if (nom.isNotEmpty || prenom.isNotEmpty) {
+        responsableNom = '$prenom $nom'.trim();
+      }
+      responsableId ??= responsable['id']?.toString();
+    }
+
+    // Handle nombreEmployes from _count.employees (backend returns _count: { employees: N })
+    int nombreEmployes = 0;
+    if (json['nombreEmployes'] != null) {
+      nombreEmployes = (json['nombreEmployes'] as num).toInt();
+    } else if (json['nombre_employes'] != null) {
+      nombreEmployes = (json['nombre_employes'] as num).toInt();
+    } else if (json['_count'] is Map && json['_count']['employees'] != null) {
+      nombreEmployes = (json['_count']['employees'] as num).toInt();
+    }
+
     return DepartmentModel(
-      id: doc.id,
-      nom: d['nom'] ?? '',
-      description: d['description'],
-      responsableId: d['responsableId'],
-      responsableNom: d['responsableNom'],
-      nombreEmployes: d['nombreEmployes'] ?? 0,
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id']?.toString() ?? '',
+      nom: json['nom']?.toString() ?? '',
+      description: json['description']?.toString(),
+      responsableId: responsableId?.toString(),
+      responsableNom: (responsableNom?.isEmpty ?? true) ? null : responsableNom,
+      nombreEmployes: nombreEmployes,
+      createdAt: json['createdAt'] != null || json['created_at'] != null
+          ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'nom': nom,
         'description': description,
         'responsableId': responsableId,
         'responsableNom': responsableNom,
         'nombreEmployes': nombreEmployes,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toIso8601String(),
       };
 
   DepartmentModel copyWith({
@@ -80,27 +105,29 @@ class PositionModel {
     required this.createdAt,
   });
 
-  factory PositionModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory PositionModel.fromJson(Map<String, dynamic> json) {
     return PositionModel(
-      id: doc.id,
-      titre: d['titre'] ?? '',
-      description: d['description'],
-      departementId: d['departementId'],
-      departementNom: d['departementNom'],
-      salaireMini: (d['salaireMini'] as num?)?.toDouble(),
-      salaireMaxi: (d['salaireMaxi'] as num?)?.toDouble(),
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      id: json['id'] ?? '',
+      titre: json['titre'] ?? '',
+      description: json['description'],
+      departementId: json['departementId'] ?? json['departement_id'],
+      departementNom: json['departementNom'] ?? json['departement_nom'],
+      salaireMini: (json['salaireMini'] ?? json['salaire_mini'] as num?)?.toDouble(),
+      salaireMaxi: (json['salaireMaxi'] ?? json['salaire_maxi'] as num?)?.toDouble(),
+      createdAt: json['createdAt'] != null || json['created_at'] != null
+          ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'titre': titre,
         'description': description,
         'departementId': departementId,
         'departementNom': departementNom,
         'salaireMini': salaireMini,
         'salaireMaxi': salaireMaxi,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toIso8601String(),
       };
 }

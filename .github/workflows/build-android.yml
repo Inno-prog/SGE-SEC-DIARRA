@@ -2,14 +2,22 @@ name: Build Android APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, postgres]
+    tags: ['v*']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+        type: string
 
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    outputs:
+      apk-path: ${{ steps.upload-apk.outputs.apk-path }}
     steps:
       - uses: actions/checkout@v4
 
@@ -21,12 +29,71 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android APK
-        run: flutter build apk --release
+      - name: Decode keystore
+        run: |
+          echo "=== Decoding keystore ==="
+          echo "Working directory: $(pwd)"
+          KEYSTORE_B64="${{ secrets.KEYSTORE_BASE64 }}"
+          echo "Secret KEYSTORE_BASE64 length: ${#KEYSTORE_B64}"
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "ERROR: KEYSTORE_BASE64 secret is empty or not set!"
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 --decode > upload-keystore.jks
+          echo "=== Verifying keystore file ==="
+          ls -la upload-keystore.jks
+          file upload-keystore.jks
+          echo "=== Checking expected path from Gradle ==="
+          ls -la ../upload-keystore.jks 2>/dev/null || echo "Not found at ../upload-keystore.jks"
+          ls -la ../../upload-keystore.jks 2>/dev/null || echo "Not found at ../../upload-keystore.jks"
 
-      - name: Upload Android APK
+      - name: Build Android APK
+        env:
+          MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      - name: Upload Android APK (artifact)
+        id: upload-apk
         uses: actions/upload-artifact@v4
         with:
           name: sge-secdiarra-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
           retention-days: 14
+
+  release-android:
+    needs: build-android
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sge-secdiarra-android-apk
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## SGE SecDiarra Android APK
+
+            ### Téléchargement
+            - [app-release.apk]({{ url }}) - APK signé pour Android
+
+            ### Installation
+            1. Téléchargez le fichier APK
+            2. Activez "Sources inconnues" dans les paramètres Android
+            3. Installez l'APK
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            artifacts/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

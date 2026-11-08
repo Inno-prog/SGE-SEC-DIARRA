@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../models/user_model.dart';
 import '../../providers/providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -32,37 +32,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
     try {
-      final user = await ref
-          .read(authServiceProvider)
-          .signIn(_emailCtrl.text.trim(), _passCtrl.text);
+      // Use the AuthStateNotifier's signIn method
+      await ref.read(authStateProvider.notifier).signIn(_emailCtrl.text.trim(), _passCtrl.text);
+
       if (!mounted) return;
+      final user = ref.read(authStateProvider).value;
       if (user == null) {
-        showSnack(context, 'Email ou mot de passe incorrect', isError: true);
+        showSnack(context, 'Erreur de connexion', isError: true);
         return;
       }
-      // Invalidate authStateProvider to force router re-evaluation
-      ref.invalidate(authStateProvider);
+
       if (user.mustChangePassword) {
         context.go(AppRoutes.security);
       } else {
         final last = ref.read(lastLocationProvider);
         context.go(last != AppRoutes.login ? last : AppRoutes.dashboard);
       }
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      final message = switch (e.code) {
-        'too-many-requests' =>
-          'Trop de tentatives (Erreur 429). L\'accès est temporairement bloqué par Firebase. Patientez quelques minutes ou réinitialisez votre mot de passe.',
-        'user-not-found' || 'wrong-password' || 'invalid-credential' =>
-          'Email ou mot de passe incorrect.',
-        'user-disabled' => 'Ce compte a été désactivé.',
-        'network-request-failed' => 'Problème de connexion réseau avec Firebase.',
-        _ => e.message ?? 'Erreur d\'authentification (${e.code})',
-      };
-      showSnack(context, message, isError: true);
     } catch (e) {
-      if (mounted)
-        showSnack(context, 'Erreur de connexion: $e', isError: true);
+      if (!mounted) return;
+      final message = e.toString();
+      String userMessage;
+      if (message.contains('401') || message.contains('unauthorized') || message.contains('invalid')) {
+        userMessage = 'Email ou mot de passe incorrect.';
+      } else if (message.contains('429') || message.contains('too-many-requests')) {
+        userMessage = 'Trop de tentatives. Veuillez patienter avant de réessayer.';
+      } else if (message.contains('network') || message.contains('connection')) {
+        userMessage = 'Problème de connexion réseau. Vérifiez votre connexion.';
+      } else {
+        userMessage = 'Erreur de connexion: $e';
+      }
+      showSnack(context, userMessage, isError: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -78,6 +77,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appName = ref.watch(appNameProvider);
     return Scaffold(
       body: Row(
         children: [
@@ -87,23 +87,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: const BoxDecoration(
                   gradient: AppColors.primaryGradient,
                 ),
-                child: const Column(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.business, size: 80, color: Colors.white),
-                    SizedBox(height: 24),
+                    const Icon(Icons.business, size: 80, color: Colors.white),
+                    const SizedBox(height: 24),
                     Text(
-                      'SGE SEC DIARRA',
-                      style: TextStyle(
+                      appName.toUpperCase(),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 12),
+                    const SizedBox(height: 12),
                     Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 40),
-                      child: Text(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: const Text(
                         'Système de Gestion des Employés\nModerne · Efficace · Sécurisé',
                         textAlign: TextAlign.center,
                         style: TextStyle(
@@ -144,9 +144,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Bienvenue sur SGE Secdiarra',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        Text(
+                          'Bienvenue sur $appName',
+                          style: const TextStyle(color: AppColors.textSecondary),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 40),
@@ -254,13 +254,15 @@ class _ForgotPasswordDialogState extends ConsumerState<_ForgotPasswordDialog> {
     }
     setState(() => _loading = true);
     try {
-      await ref.read(authServiceProvider).sendPasswordReset(email);
+      final authService = ref.read(authServiceProvider);
+      await authService.sendPasswordReset(email);
       if (mounted) setState(() => _sent = true);
-    } on FirebaseAuthException catch (e) {
+    } catch (e) {
       if (mounted) {
-        final msg = e.code == 'user-not-found'
+        final message = e.toString();
+        final msg = message.contains('404') || message.contains('not found')
             ? 'Aucun compte trouvé avec cet email'
-            : 'Erreur: ${e.message}';
+            : 'Erreur: $e';
         showSnack(context, msg, isError: true);
       }
     } finally {

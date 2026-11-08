@@ -92,7 +92,7 @@ class _LeaveList extends ConsumerWidget {
     final user = ref.watch(currentUserProvider)!;
     final leaves = ref.watch(
       leavesProvider(
-        LeaveParams(employeeId: isRH ? null : user.employeeId, statut: statut),
+        LeaveParams(employeeId: isRH ? null : user.employeeId, status: statut),
       ),
     );
 
@@ -258,16 +258,40 @@ class _LeaveTile extends ConsumerWidget {
       );
       if (commentaire == null) return;
     }
-    await ref
-        .read(firestoreServiceProvider)
-        .updateLeaveStatus(leave.id, statut, user.fullName, commentaire);
-    if (context.mounted)
-      showSnack(
-        context,
-        statut == AppConstants.leaveApproved
-            ? 'Congé approuvé'
-            : 'Congé refusé',
-      );
+    // Map frontend status to backend API value
+    final backendStatus = _mapLeaveStatusToBackend(statut);
+    try {
+      await ref
+          .read(leaveApiServiceProvider)
+          .updateLeaveStatus(leave.id, backendStatus, user.id, commentaire);
+      if (context.mounted) {
+        // Invalider les providers pour rafraîchir les onglets
+        final currentUser = ref.read(currentUserProvider)!;
+        final isRH = currentUser.role == AppConstants.roleAdmin ||
+            currentUser.role == AppConstants.roleRH ||
+            currentUser.role == AppConstants.roleDirector;
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leavePending)));
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leaveApproved)));
+        ref.invalidate(leavesProvider(LeaveParams(
+            employeeId: isRH ? null : currentUser.employeeId,
+            status: AppConstants.leaveRejected)));
+        ref.invalidate(pendingLeavesProvider);
+        showSnack(
+          context,
+          statut == AppConstants.leaveApproved
+              ? 'Congé approuvé'
+              : 'Congé refusé',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showSnack(context, 'Erreur: $e', isError: true);
+      }
+    }
   }
 }
 
@@ -298,7 +322,6 @@ class _CommentDialogState extends State<_CommentDialog> {
         maxLines: 3,
       ),
       actions: [
-          NotificationBell(),
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Annuler'),
@@ -309,6 +332,41 @@ class _CommentDialogState extends State<_CommentDialog> {
         ),
       ],
     );
+  }
+}
+
+// Mapping from frontend display values to backend API values
+String _mapLeaveTypeToBackend(String frontendType) {
+  switch (frontendType) {
+    case 'Congé annuel':
+      return 'annuel';
+    case 'Congé maladie':
+      return 'maladie';
+    case 'Congé maternité':
+      return 'maternite';
+    case 'Congé exceptionnel':
+      return 'exceptionnel';
+    case 'Congé paternité':
+      return 'paternite';
+    case 'Congé sans solde':
+      return 'sans_solde';
+    default:
+      return frontendType.toLowerCase();
+  }
+}
+
+String _mapLeaveStatusToBackend(String frontendStatus) {
+  switch (frontendStatus) {
+    case 'approuvé':
+      return 'approuve';
+    case 'refusé':
+      return 'rejete';
+    case 'en_attente':
+      return 'en_attente';
+    case 'annulé':
+      return 'annule';
+    default:
+      return frontendStatus;
   }
 }
 
@@ -334,29 +392,31 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider)!;
-    if (user.role == AppConstants.roleEmployee) {
-      _employeeId = user.employeeId;
-      _employeeNom = user.fullName;
-      _employeePhoto = user.photoUrl;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          final all = ref.read(allEmployeesProvider).value;
-          if (all == null) return;
-          final emp = all.firstWhere(
-            (e) =>
-                (user.employeeId != null && e.id == user.employeeId) ||
-                e.fullName == user.fullName ||
-                e.email == user.email,
-          );
-          if (mounted) {
-            setState(() {
-              _employeeId = emp.id;
-              _employeeNom = emp.fullName;
-              _employeePhoto = emp.photoUrl;
-            });
-          }
-        } catch (_) {}
+    _employeeId = user.employeeId;
+    _employeeNom = user.fullName;
+    _employeePhoto = user.photoUrl;
+
+    // Fallback: if employeeId is not set, try to find from employees list
+    if (_employeeId == null) {
+      _resolveEmployeeId();
+    }
+  }
+
+  Future<void> _resolveEmployeeId() async {
+    final user = ref.read(currentUserProvider)!;
+    final all = await ref.read(allEmployeesProvider.future);
+    if (!mounted) return;
+    try {
+      final emp = all.firstWhere(
+        (e) => e.email == user.email || e.fullName == user.fullName,
+      );
+      setState(() {
+        _employeeId = emp.id;
+        _employeeNom = emp.fullName;
+        _employeePhoto = emp.photoUrl;
       });
+    } catch (_) {
+      // No match found, keep original values
     }
   }
 
@@ -393,14 +453,16 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
     }
     setState(() => _loading = true);
     try {
-      final service = ref.read(firestoreServiceProvider);
-      await service.addLeave(
+      final leaveService = ref.read(leaveApiServiceProvider);
+      // Map frontend leave type to backend API value
+      final backendType = _mapLeaveTypeToBackend(_type);
+      await leaveService.createLeave(
         LeaveModel(
           id: '',
           employeeId: _employeeId!,
           employeeNom: _employeeNom!,
           employeePhoto: _employeePhoto,
-          type: _type,
+          type: backendType,
           dateDebut: _dateDebut,
           dateFin: _dateFin,
           nombreJours: _nombreJours,
@@ -409,6 +471,14 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
         ),
       );
       if (mounted) {
+        // Invalidation AVANT Navigator.pop
+        // Invalider avec les mêmes paramètres que dans _LeaveList
+        final user = ref.read(currentUserProvider)!;
+        final isRH = user.role == AppConstants.roleAdmin ||
+            user.role == AppConstants.roleRH ||
+            user.role == AppConstants.roleDirector;
+        ref.invalidate(leavesProvider(LeaveParams(employeeId: isRH ? null : user.employeeId, status: AppConstants.leavePending)));
+        ref.invalidate(pendingLeavesProvider);
         Navigator.pop(context);
         showSnack(context, 'Demande de congé soumise');
       }
@@ -487,6 +557,8 @@ class _LeaveFormState extends ConsumerState<_LeaveForm> {
                           AppConstants.leaveSick,
                           AppConstants.leaveMaternity,
                           AppConstants.leaveExceptional,
+                          'Congé paternité',
+                          'Congé sans solde',
                         ]
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                         .toList(),

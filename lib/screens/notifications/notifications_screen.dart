@@ -7,7 +7,6 @@ import '../../core/widgets/common_widgets.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
-import '../../services/auth_service.dart';
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 class NotificationsScreen extends ConsumerWidget {
@@ -15,7 +14,8 @@ class NotificationsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifs = ref.watch(notificationsProvider);
+    final user = ref.watch(currentUserProvider);
+    final notifs = user != null ? ref.watch(notificationsProvider(user.id)) : const AsyncValue.data([]);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -27,10 +27,7 @@ class NotificationsScreen extends ConsumerWidget {
           NotificationBell(),
           TextButton(
             onPressed: () {
-              final user = ref.read(currentUserProvider)!;
-              ref
-                  .read(firestoreServiceProvider)
-                  .markAllNotificationsRead(user.id);
+              ref.read(notificationApiServiceProvider).markAllAsRead();
             },
             child: const Text(
               'Tout lire',
@@ -133,7 +130,7 @@ class _NotifTile extends ConsumerWidget {
             : null,
         onTap: () {
           if (!notif.isRead) {
-            ref.read(firestoreServiceProvider).markNotificationRead(notif.id);
+            ref.read(notificationApiServiceProvider).markAsRead(notif.id);
           }
         },
       ),
@@ -147,7 +144,8 @@ class MessagingScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final conversations = ref.watch(conversationsProvider);
+    final user = ref.watch(currentUserProvider);
+    final conversations = user != null ? ref.watch(conversationsProvider(user.id)) : const AsyncValue.data([]);
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -261,7 +259,7 @@ class _NewConversationSheetState extends ConsumerState<_NewConversationSheet> {
       final user = ref.read(currentUserProvider)!;
       final participants = [user.id, ..._selectedIds];
       await ref
-          .read(firestoreServiceProvider)
+          .read(conversationApiServiceProvider)
           .createConversation(participants, _nomCtrl.text.trim());
       if (mounted) {
         Navigator.pop(context);
@@ -368,18 +366,11 @@ class _ConversationScreenState extends ConsumerState<_ConversationScreen> {
 
   Future<void> _send() async {
     if (_msgCtrl.text.trim().isEmpty) return;
-    final user = ref.read(currentUserProvider)!;
-    final msg = MessageModel(
-      id: '',
-      conversationId: widget.conversationId,
-      senderId: user.id,
-      senderNom: user.fullName,
-      senderPhoto: user.photoUrl,
-      contenu: _msgCtrl.text.trim(),
-      createdAt: DateTime.now(),
-    );
     _msgCtrl.clear();
-    await ref.read(firestoreServiceProvider).sendMessage(msg);
+    await ref.read(conversationApiServiceProvider).sendMessage(
+      widget.conversationId,
+      _msgCtrl.text.trim(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients)
         _scrollCtrl.animateTo(
@@ -754,7 +745,7 @@ class _EventTile extends ConsumerWidget {
                   );
                   if (ok && context.mounted) {
                     await ref
-                        .read(firestoreServiceProvider)
+                        .read(agendaApiServiceProvider)
                         .deleteAgendaEvent(event.id);
                     ref.invalidate(agendaProvider);
                     if (context.mounted) showSnack(context, 'Événement supprimé');
@@ -820,8 +811,8 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
         _heureFin.hour,
         _heureFin.minute,
       );
-      final service = ref.read(firestoreServiceProvider);
-      await service.addAgendaEvent(
+      final agendaService = ref.read(agendaApiServiceProvider);
+      await agendaService.createAgendaEvent(
         AgendaModel(
           id: '',
           titre: _titreCtrl.text.trim(),
@@ -833,19 +824,6 @@ class _AgendaFormState extends ConsumerState<_AgendaForm> {
           createdAt: DateTime.now(),
         ),
       );
-      // Notify all users about the new agenda event
-      final allUsers = await ref.read(authServiceProvider).watchAllUsers().first;
-      for (final u in allUsers) {
-        if (u.id == user.id) continue;
-        await service.addNotification(NotificationModel(
-          id: '',
-          userId: u.id,
-          titre: 'Nouvel événement : ${_titreCtrl.text.trim()}',
-          message: 'Le ${DateFormat('dd/MM/yyyy').format(dateDebut)} de ${_heureDebut.format(context)} à ${_heureFin.format(context)}',
-          type: 'agenda',
-          createdAt: DateTime.now(),
-        ));
-      }
       ref.invalidate(agendaProvider);
       if (mounted) {
         Navigator.pop(context);

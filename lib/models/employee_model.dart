@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class EmergencyContact {
   final String nom;
   final String telephone;
@@ -7,10 +5,10 @@ class EmergencyContact {
 
   EmergencyContact({required this.nom, required this.telephone, required this.relation});
 
-  factory EmergencyContact.fromMap(Map<String, dynamic> m) =>
-      EmergencyContact(nom: m['nom'] ?? '', telephone: m['telephone'] ?? '', relation: m['relation'] ?? '');
+  factory EmergencyContact.fromJson(Map<String, dynamic> json) =>
+      EmergencyContact(nom: json['nom'] ?? '', telephone: json['telephone'] ?? '', relation: json['relation'] ?? '');
 
-  Map<String, dynamic> toMap() => {'nom': nom, 'telephone': telephone, 'relation': relation};
+  Map<String, dynamic> toJson() => {'nom': nom, 'telephone': telephone, 'relation': relation};
 }
 
 class EmployeeModel {
@@ -52,6 +50,8 @@ class EmployeeModel {
 
   final DateTime createdAt;
   final String createdBy;
+  final DateTime? updatedAt;
+  final String? updatedBy;
 
   EmployeeModel({
     required this.id,
@@ -85,6 +85,8 @@ class EmployeeModel {
     this.autresFileId,
     required this.createdAt,
     required this.createdBy,
+    this.updatedAt,
+    this.updatedBy,
   });
 
   String get fullName => '$prenom $nom';
@@ -94,64 +96,74 @@ class EmployeeModel {
     return now.year - dateEmbauche.year;
   }
 
-  factory EmployeeModel.fromFirestore(DocumentSnapshot doc) {
-    final d = doc.data() as Map<String, dynamic>;
+  factory EmployeeModel.fromJson(Map<String, dynamic> json) {
     return EmployeeModel(
-      id: doc.id,
-      matricule: d['matricule'] ?? '',
-      nom: d['nom'] ?? '',
-      prenom: d['prenom'] ?? '',
-      sexe: d['sexe'] ?? '',
-      dateNaissance: (d['dateNaissance'] as Timestamp).toDate(),
-      photoUrl: d['photoUrl'],
-      adresse: d['adresse'] ?? '',
-      telephone: d['telephone'] ?? '',
-      email: d['email'] ?? '',
-      situationMatrimoniale: d['situationMatrimoniale'] ?? '',
-      nationalite: d['nationalite'] ?? '',
-      contactUrgence: d['contactUrgence'] != null
-          ? EmergencyContact.fromMap(d['contactUrgence'])
+      id: json['id'] ?? '',
+      matricule: json['matricule'] ?? '',
+      nom: json['nom'] ?? '',
+      prenom: json['prenom'] ?? '',
+      sexe: json['sexe'] ?? '',
+      dateNaissance: json['dateNaissance'] != null || json['date_naissance'] != null
+          ? DateTime.parse(json['dateNaissance'] ?? json['date_naissance'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
+      photoUrl: json['photoUrl'] ?? json['photo_url'],
+      adresse: json['adresse'] ?? '',
+      telephone: json['telephone'] ?? '',
+      email: json['email'] ?? '',
+      situationMatrimoniale: json['situationMatrimoniale'] ?? json['situation_matrimoniale'] ?? '',
+      nationalite: json['nationalite'] ?? '',
+      contactUrgence: (json['contactUrgence'] != null || json['contact_urgence'] != null)
+          ? EmergencyContact.fromJson(json['contactUrgence'] ?? json['contact_urgence'] ?? {})
           : null,
-      poste: d['poste'] ?? '',
-      service: d['service'] ?? '',
-      departementId: d['departementId'] ?? '',
-      departementNom: d['departementNom'] ?? '',
-      grade: d['grade'] ?? '',
-      dateEmbauche: (d['dateEmbauche'] as Timestamp).toDate(),
-      typeContrat: d['typeContrat'] ?? '',
-      salaire: (d['salaire'] ?? 0).toDouble(),
-      statut: d['statut'] ?? 'actif',
-      soldeCongesAnnuels: d['soldeCongesAnnuels'] ?? 30,
-      soldeCongesMaladie: d['soldeCongesMaladie'] ?? 15,
-      contratSigneFileId: d['contratSigneFileId'],
-      demandeFileId: d['demandeFileId'],
-      cvFileId: d['cvFileId'],
-      diplomeFileId: d['diplomeFileId'],
-      autresFileId: d['autresFileId'],
-      createdAt: (d['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      createdBy: d['createdBy'] ?? '',
+      poste: json['poste'] ?? '',
+      service: json['service'] ?? '',
+      departementId: json['departementId'] ?? json['departement_id'] ?? '',
+      departementNom: json['departementNom'] ?? json['departement_nom'] ?? '',
+      grade: json['grade'] ?? '',
+      dateEmbauche: json['dateEmbauche'] != null || json['date_embauche'] != null
+          ? DateTime.parse(json['dateEmbauche'] ?? json['date_embauche'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
+      typeContrat: json['typeContrat'] ?? json['type_contrat'] ?? '',
+      salaire: (json['salaire'] ?? 0).toDouble(),
+      statut: json['statut'] ?? 'actif',
+      soldeCongesAnnuels: json['soldeCongesAnnuels'] ?? json['solde_conges_annuels'] ?? 30,
+      soldeCongesMaladie: json['soldeCongesMaladie'] ?? json['solde_conges_maladie'] ?? 15,
+      contratSigneFileId: json['contratSigneFileId'] ?? json['contrat_signe_file_id'],
+      demandeFileId: json['demandeFileId'] ?? json['demande_file_id'],
+      cvFileId: json['cvFileId'] ?? json['cv_file_id'],
+      diplomeFileId: json['diplomeFileId'] ?? json['diplome_file_id'],
+      autresFileId: json['autresFileId'] ?? json['autres_file_id'],
+      createdAt: json['createdAt'] != null || json['created_at'] != null
+          ? DateTime.parse(json['createdAt'] ?? json['created_at'] ?? DateTime.now().toIso8601String())
+          : DateTime.now(),
+      createdBy: json['createdBy'] ?? json['created_by'] ?? '',
+      updatedAt: json['updatedAt'] != null || json['updated_at'] != null
+          ? DateTime.parse(json['updatedAt'] ?? json['updated_at'] ?? DateTime.now().toIso8601String())
+          : null,
+      updatedBy: json['updatedBy'] ?? json['updated_by'],
     );
   }
 
-  Map<String, dynamic> toFirestore() => {
+  Map<String, dynamic> toJson() => {
+        'id': id,
         'matricule': matricule,
         'nom': nom,
         'prenom': prenom,
         'sexe': sexe,
-        'dateNaissance': Timestamp.fromDate(dateNaissance),
+        'dateNaissance': dateNaissance.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'photoUrl': photoUrl,
         'adresse': adresse,
         'telephone': telephone,
         'email': email,
         'situationMatrimoniale': situationMatrimoniale,
         'nationalite': nationalite,
-        'contactUrgence': contactUrgence?.toMap(),
+        'contactUrgence': contactUrgence?.toJson(),
         'poste': poste,
         'service': service,
         'departementId': departementId,
         'departementNom': departementNom,
         'grade': grade,
-        'dateEmbauche': Timestamp.fromDate(dateEmbauche),
+        'dateEmbauche': dateEmbauche.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'typeContrat': typeContrat,
         'salaire': salaire,
         'statut': statut,
@@ -162,16 +174,10 @@ class EmployeeModel {
         'cvFileId': cvFileId,
         'diplomeFileId': diplomeFileId,
         'autresFileId': autresFileId,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': createdAt.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
         'createdBy': createdBy,
-        'searchIndex': [
-          nom.toLowerCase(),
-          prenom.toLowerCase(),
-          matricule.toLowerCase(),
-          email.toLowerCase(),
-          departementNom.toLowerCase(),
-          poste.toLowerCase(),
-        ],
+        'updatedAt': updatedAt?.toUtc().toIso8601String().replaceAll('+00:00', 'Z'),
+        'updatedBy': updatedBy,
       };
 
   EmployeeModel copyWith({
@@ -197,6 +203,8 @@ class EmployeeModel {
     String? cvFileId,
     String? diplomeFileId,
     String? autresFileId,
+    DateTime? updatedAt,
+    String? updatedBy,
   }) =>
       EmployeeModel(
         id: id,
@@ -230,5 +238,7 @@ class EmployeeModel {
         autresFileId: autresFileId ?? this.autresFileId,
         createdAt: createdAt,
         createdBy: createdBy,
+        updatedAt: updatedAt ?? this.updatedAt,
+        updatedBy: updatedBy ?? this.updatedBy,
       );
 }

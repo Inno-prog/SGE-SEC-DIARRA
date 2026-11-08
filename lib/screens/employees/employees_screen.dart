@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/common_widgets.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/providers.dart';
 import '../../models/employee_model.dart';
 
-class EmployeesScreen extends ConsumerWidget {
+class EmployeesScreen extends ConsumerStatefulWidget {
   const EmployeesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final employees = ref.watch(filteredEmployeesProvider);
-    final search = ref.watch(employeeSearchProvider);
+  ConsumerState<EmployeesScreen> createState() => _EmployeesScreenState();
+}
+
+class _EmployeesScreenState extends ConsumerState<EmployeesScreen> {
+  String _search = '';
+  DateTimeRange? _dateRange;
+
+  @override
+  Widget build(BuildContext context) {
+    final employees = ref.watch(allEmployeesProvider);
     final user = ref.watch(currentUserProvider);
     final canEdit = user != null &&
         (user.role == AppConstants.roleAdmin ||
@@ -27,163 +34,234 @@ class EmployeesScreen extends ConsumerWidget {
           onPressed: () => ref.read(drawerKeyProvider).currentState?.openDrawer(),
         ),
         title: const Text('Employés'),
-        actions: [
-          NotificationBell(),
-          if (canEdit)
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: () => context.go('/employees/add'),
-            ),
-        ],
+        actions: [NotificationBell()],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Rechercher par nom, matricule, poste...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: search.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () =>
-                            ref.read(employeeSearchProvider.notifier).state =
-                                '',
-                      )
-                    : null,
-              ),
-              onChanged: (v) =>
-                  ref.read(employeeSearchProvider.notifier).state = v,
-            ),
-          ),
-          Expanded(
-            child: employees.when(
-              data: (list) => list.isEmpty
-                  ? EmptyState(
-                      message: 'Aucun employé trouvé',
-                      icon: Icons.people_outline,
-                      actionLabel: canEdit ? 'Ajouter un employé' : null,
-                      onAction: canEdit ? () => context.go('/employees/add') : null,
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: list.length,
-                      itemBuilder: (_, i) => _EmployeeTile(employee: list[i], canEdit: canEdit),
-                    ),
-              loading: () => const LoadingWidget(),
-              error: (e, _) => Center(child: Text('Erreur: $e')),
-            ),
-          ),
-        ],
+      body: employees.when(
+        data: (list) {
+          var filtered = list;
+          if (_search.isNotEmpty) {
+            final q = _search.toLowerCase();
+            filtered = filtered
+                .where((e) =>
+                    e.fullName.toLowerCase().contains(q) ||
+                    e.matricule.toLowerCase().contains(q) ||
+                    e.departementNom.toLowerCase().contains(q) ||
+                    e.poste.toLowerCase().contains(q))
+                .toList();
+          }
+
+          return _EmployeesPageContent(
+            employees: filtered,
+            search: _search,
+            dateRange: _dateRange,
+            onSearch: (v) => setState(() => _search = v),
+            onDateFilter: (r) => setState(() => _dateRange = r),
+            canEdit: canEdit,
+            onView: (e) => context.go('/employees/${e.id}'),
+            onEdit: canEdit ? (e) => context.go('/employees/${e.id}/edit') : null,
+            onDelete: canEdit
+                ? (e) async {
+                    final ok = await showConfirm(
+                      context,
+                      title: 'Supprimer l\'employé',
+                      message: 'Voulez-vous vraiment supprimer ${e.fullName} ?',
+                    );
+                    if (ok && context.mounted) {
+                      await ref.read(employeeApiServiceProvider).deleteEmployee(e.id);
+                      if (context.mounted) showSnack(context, 'Employé supprimé');
+                    }
+                  }
+                : null,
+          );
+        },
+        loading: () => const LoadingWidget(),
+        error: (e, _) => Center(child: Text('Erreur: $e')),
       ),
-      floatingActionButton: canEdit
-          ? FloatingActionButton.extended(
-              onPressed: () => context.go('/employees/add'),
-              icon: const Icon(Icons.person_add_outlined),
-              label: const Text('Nouvel employé'),
-            )
-          : null,
     );
   }
 }
 
-class _EmployeeTile extends ConsumerWidget {
-  final EmployeeModel employee;
+/// Page content using new Pro components
+class _EmployeesPageContent extends ConsumerWidget {
+  final List<EmployeeModel> employees;
+  final String search;
+  final DateTimeRange? dateRange;
+  final ValueChanged<String> onSearch;
+  final ValueChanged<DateTimeRange?> onDateFilter;
   final bool canEdit;
-  const _EmployeeTile({required this.employee, required this.canEdit});
+  final void Function(EmployeeModel) onView;
+  final void Function(EmployeeModel)? onEdit;
+  final void Function(EmployeeModel)? onDelete;
+
+  const _EmployeesPageContent({
+    required this.employees,
+    required this.search,
+    required this.dateRange,
+    required this.onSearch,
+    required this.onDateFilter,
+    required this.canEdit,
+    required this.onView,
+    this.onEdit,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: EmployeeAvatar(
-          photoUrl: employee.photoUrl,
-          name: employee.fullName,
-          radius: 26,
-        ),
-        title: Text(
-          employee.fullName,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Row(
-          mainAxisSize: MainAxisSize.min,
+    return Container(
+      color: AppColors.background,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            Flexible(
-              child: Text(
-                '${employee.poste} • ${employee.departementNom} • ${employee.matricule}',
-                style: const TextStyle(fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+            // Page Header
+            ProPageHeader(
+              icon: Icons.people_outline,
+              title: 'Liste des employés',
+              subtitle: 'Gestion du personnel de l\'entreprise',
+              count: employees.length,
             ),
-            const SizedBox(width: 6),
-            StatusBadge(status: employee.statut),
+            const SizedBox(height: 16),
+            // Toolbar
+            ProListToolbar(
+              searchHint: 'Rechercher par nom, matricule, poste...',
+              onSearch: onSearch,
+              onFilterDate: () async {
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2100),
+                  initialDateRange: dateRange,
+                );
+                onDateFilter(picked);
+              },
+              addLabel: 'Ajouter un employé',
+              onAdd: () => context.go('/employees/add'),
+            ),
+            const SizedBox(height: 16),
+            // Data Table
+            ProDataTable<EmployeeModel>(
+              minWidth: 1100,
+              columns: _buildColumns(),
+              items: employees,
+            ),
           ],
         ),
-        trailing: canEdit
-            ? PopupMenuButton<String>(
-                onSelected: (v) => _handleAction(context, ref, v),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'view',
-                    child: Row(
-                      children: [
-                        Icon(Icons.visibility_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Text('Voir'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18),
-                        SizedBox(width: 8),
-                        Text('Modifier'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                        SizedBox(width: 8),
-                        Text('Supprimer', style: TextStyle(color: AppColors.error)),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            : null,
-        onTap: () => context.go('/employees/${employee.id}'),
       ),
     );
   }
 
-  void _handleAction(BuildContext context, WidgetRef ref, String action) async {
-    switch (action) {
-      case 'view':
-        context.go('/employees/${employee.id}');
-      case 'edit':
-        context.go('/employees/${employee.id}/edit');
-      case 'delete':
-        final confirm = await showConfirm(
-          context,
-          title: 'Supprimer l\'employé',
-          message: 'Voulez-vous vraiment supprimer ${employee.fullName} ?',
-        );
-        if (confirm && context.mounted) {
-          await ref
-              .read(firestoreServiceProvider)
-              .deleteEmployee(employee.id, employee.departementId);
-          if (context.mounted) showSnack(context, 'Employé supprimé');
-        }
+  List<ProColumn<EmployeeModel>> _buildColumns() {
+    return [
+      ProColumn<EmployeeModel>(
+        label: 'Employé',
+        flex: 3,
+        cell: (e) => ProEmployeeCell(
+          name: e.fullName,
+          subtitle: e.poste,
+        ),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Matricule',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => Text(
+          e.matricule,
+          style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+        ),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Email',
+        flex: 3,
+        cell: (e) => Text(
+          e.email,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Téléphone',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => Text(
+          e.telephone.isEmpty ? '—' : e.telephone,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Département',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => ProStatusChip(label: e.departementNom, color: Colors.blue.shade700),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Type contrat',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => ProStatusChip(
+          label: e.typeContrat,
+          color: AppColors.primary,
+        ),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Statut',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => _buildStatusChip(e.statut),
+      ),
+      ProColumn<EmployeeModel>(
+        label: 'Actions',
+        flex: 2,
+        alignment: Alignment.center,
+        cell: (e) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ProActionIcon(
+              icon: Icons.visibility_outlined,
+              color: Colors.blue.shade700,
+              tooltip: 'Voir',
+              onTap: () => onView(e),
+            ),
+            if (canEdit && onEdit != null) ...[
+              const SizedBox(width: 8),
+              ProActionIcon(
+                icon: Icons.edit_outlined,
+                color: Colors.orange.shade800,
+                tooltip: 'Modifier',
+                onTap: () => onEdit!(e),
+              ),
+            ],
+            if (canEdit && onDelete != null) ...[
+              const SizedBox(width: 8),
+              ProActionIcon(
+                icon: Icons.delete_outline,
+                color: Colors.red.shade700,
+                tooltip: 'Supprimer',
+                onTap: () => onDelete!(e),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildStatusChip(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'actif':
+        color = AppColors.success;
+        break;
+      case 'suspendu':
+        color = AppColors.error;
+        break;
+      case 'demissionnaire':
+        color = Colors.grey;
+        break;
+      case 'conge':
+        color = AppColors.info;
+        break;
+      default:
+        color = Colors.grey;
     }
+    return ProStatusChip(label: status, color: color);
   }
 }

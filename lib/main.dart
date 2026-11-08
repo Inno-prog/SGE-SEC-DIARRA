@@ -1,56 +1,28 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
-import 'firebase_options.dart';
+import 'core/network/api_client.dart';
+import 'core/constants/app_constants.dart';
 import 'providers/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    // Firebase already initialized (e.g., by google-services.json plugin on Android)
-  }
-  if (kIsWeb) {
-    // App Check non activé sur web (nécessite domaine enregistré dans Firebase Console)
-  } else if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
-    if (kDebugMode) {
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.debug,
-        appleProvider: AppleProvider.debug,
-      );
-    } else {
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.deviceCheck,
-      );
-    }
-  }
-  // Sur Windows (et autres plateformes non prises en charge par le plugin),
-  // App Check n'est pas activé pour éviter MissingPluginException.
-  if (!kIsWeb) {
-    try {
-      await FirebaseFirestore.instance.enablePersistence(
-        const PersistenceSettings(synchronizeTabs: true),
-      );
-    } catch (e) {
-      // Persistence already enabled or not supported on this platform
-    }
-  }
+
+  // Initialize API client
+  await ApiClient().initialize();
+
   await initializeDateFormatting('fr_FR', null);
+  final prefs = await SharedPreferences.getInstance();
+  final lastLocation = prefs.getString('last_location') ?? AppRoutes.dashboard;
   runApp(
-    const ProviderScope(
-      child: SGEApp(),
+    ProviderScope(
+      overrides: [
+        lastLocationProvider.overrideWith((ref) => lastLocation),
+      ],
+      child: const SGEApp(),
     ),
   );
 }
@@ -67,7 +39,7 @@ class SGEApp extends ConsumerWidget {
       child: _ThemeSaver(
         child: _EmployeeIdFixer(
           child: MaterialApp.router(
-            title: 'SGE Secdiarra',
+            title: AppConstants.baseAppName,
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
@@ -137,12 +109,6 @@ class _EmployeeIdFixer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.listen<AsyncValue<void>>(ensureEmployeeIdProvider, (previous, next) {
-      next.whenOrNull(
-        error: (e, _) => debugPrint('employeeId fix failed: $e'),
-      );
-    });
-    ref.listen<AsyncValue<void>>(contractExpiryNotifierProvider, (_, __) {});
     return child;
   }
 }

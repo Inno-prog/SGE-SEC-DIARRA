@@ -1,6 +1,15 @@
 class AppConstants {
-  static const String appName = 'SGE Secdiarra';
+  static const String baseAppName = 'SGE';
   static const String appVersion = '1.0.0';
+
+  /// Get the full app name with optional company name
+  /// Format: "SGE" or "SGE [company name]"
+  static String getAppName({String? companyName}) {
+    if (companyName != null && companyName.trim().isNotEmpty) {
+      return '$baseAppName ${companyName.trim()}';
+    }
+    return baseAppName;
+  }
 
   // Firestore collections
   static const String colUsers = 'users';
@@ -38,17 +47,18 @@ class AppConstants {
   static const String statusSuspended = 'suspendu';
   static const String statusResigned = 'demissionnaire';
 
-  // Contract types
+  // Contract types (aligned with backend enum: CDI, CDD, stage, freelance)
   static const String contractCDI = 'CDI';
   static const String contractCDD = 'CDD';
-  static const String contractStage = 'Stage';
-  static const String contractConsultant = 'Consultant';
-  static const String contractPrestataire = 'Prestataire';
+  static const String contractStage = 'stage';
+  static const String contractFreelance = 'freelance';
 
-  // Contract status
-  static const String contractDraft = 'brouillon';
-  static const String contractValidated = 'valide';
-  static const String contractActiveLegacy = 'actif';
+  // Contract status (aligned with backend enum: actif, expire, resilie, en_attente)
+  static const String contractDraft = 'en_attente';
+  static const String contractValidated = 'actif';
+  static const String contractActive = 'actif';
+  static const String contractExpired = 'expire';
+  static const String contractTerminated = 'resilie';
 
   // Leave types
   static const String leaveAnnual = 'Congé annuel';
@@ -70,6 +80,9 @@ class AppConstants {
   // Pagination
   static const int pageSize = 20;
 
+  // Payroll calculation rates
+  static const double tauxCotisationsSociales = 0.22; // 22%
+
   // Storage paths
   static const String storageEmployeePhotos = 'employee_photos';
   static const String storageDocuments = 'documents';
@@ -84,6 +97,7 @@ class AppRoutes {
   static const String employeeDetail = '/employees/:id';
   static const String employeeAdd = '/employees/add';
   static const String departments = '/departments';
+  static const String departmentDetail = '/departments/:id';
   static const String positions = '/positions';
   static const String contracts = '/contracts';
   static const String attendance = '/attendance';
