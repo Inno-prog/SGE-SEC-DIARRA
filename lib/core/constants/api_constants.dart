@@ -1,6 +1,7 @@
 class ApiConstants {
-  // Base URL for the API
-  static const String baseUrl = 'http://localhost:3000/api/v1';
+  // Base URL for the API - configurable via --dart-define=API_BASE_URL=https://your-api.com/api/v1
+  // Defaults to localhost for development
+  static const String baseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3000/api/v1');
 
   // Endpoints
   static const String auth = '/auth';

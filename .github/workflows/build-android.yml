@@ -52,7 +52,7 @@ jobs:
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Upload Android APK (artifact)
         id: upload-apk

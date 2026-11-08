@@ -31,7 +31,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows EXE
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Verify build output
         shell: pwsh
