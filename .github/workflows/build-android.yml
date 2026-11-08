@@ -32,6 +32,8 @@ jobs:
       - name: Decode keystore
         run: |
           echo "=== Decoding keystore ==="
+          echo "Working directory: $(pwd)"
+          echo "Secret KEYSTORE_BASE64 length: ${#{{ secrets.KEYSTORE_BASE64 }}}"
           if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
             echo "ERROR: KEYSTORE_BASE64 secret is empty or not set!"
             exit 1
@@ -40,6 +42,9 @@ jobs:
           echo "=== Verifying keystore file ==="
           ls -la upload-keystore.jks
           file upload-keystore.jks
+          echo "=== Checking expected path from Gradle ==="
+          ls -la ../upload-keystore.jks 2>/dev/null || echo "Not found at ../upload-keystore.jks"
+          ls -la ../../upload-keystore.jks 2>/dev/null || echo "Not found at ../../upload-keystore.jks"
 
       - name: Build Android APK
         env:
