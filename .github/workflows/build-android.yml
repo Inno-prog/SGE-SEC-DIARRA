@@ -33,12 +33,13 @@ jobs:
         run: |
           echo "=== Decoding keystore ==="
           echo "Working directory: $(pwd)"
-          echo "Secret KEYSTORE_BASE64 length: ${#{{ secrets.KEYSTORE_BASE64 }}}"
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          KEYSTORE_B64="${{ secrets.KEYSTORE_BASE64 }}"
+          echo "Secret KEYSTORE_BASE64 length: ${#KEYSTORE_B64}"
+          if [ -z "$KEYSTORE_B64" ]; then
             echo "ERROR: KEYSTORE_BASE64 secret is empty or not set!"
             exit 1
           fi
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
+          echo "$KEYSTORE_B64" | base64 --decode > upload-keystore.jks
           echo "=== Verifying keystore file ==="
           ls -la upload-keystore.jks
           file upload-keystore.jks
