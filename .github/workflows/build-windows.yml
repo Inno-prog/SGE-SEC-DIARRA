@@ -3,13 +3,22 @@ name: Build Windows EXE
 on:
   push:
     branches: [main, master, postgres]
+    tags: ['v*']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: false
+        type: string
 
 jobs:
   build-windows:
     runs-on: windows-latest
+    outputs:
+      exe-path: ${{ steps.upload-exe.outputs.exe-path }}
+      installer-path: ${{ steps.upload-installer.outputs.installer-path }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,16 +34,21 @@ jobs:
         run: flutter build windows --release
 
       - name: Verify build output
-        shell: bash
+        shell: pwsh
         run: |
-          echo "=== Checking build output directories ==="
-          find build/windows -name "*.exe" -type f 2>/dev/null | head -20
-          echo "=== x64 runner Release ==="
-          ls -la build/windows/x64/runner/Release/ 2>/dev/null || echo "Not found"
-          echo "=== runner Release ==="
-          ls -la build/windows/runner/Release/ 2>/dev/null || echo "Not found"
-          echo "=== installer dir ==="
-          ls -la build/windows/installer/ 2>/dev/null || echo "Not found"
+          Write-Host "=== Build output ==="
+          Get-ChildItem -Path "build\windows\x64\runner\Release" -ErrorAction SilentlyContinue
+          Write-Host "=== EXE files ==="
+          Get-ChildItem -Path "build\windows" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue
+
+      - name: Upload Windows EXE (artifact)
+        id: upload-exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: sge-secdiarra-windows-exe
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -42,24 +56,59 @@ jobs:
       - name: Create Windows Installer
         run: iscc windows/installer.iss
 
-      - name: Verify installer output
-        shell: bash
-        run: |
-          echo "=== Installer output ==="
-          ls -la build/windows/installer/
-          echo "=== Checking for installer exe ==="
-          find build/windows/installer -name "*.exe" -type f 2>/dev/null
-
-      - name: Upload Windows Installer
+      - name: Upload Windows Installer (artifact)
+        id: upload-installer
         uses: actions/upload-artifact@v4
         with:
           name: sge-secdiarra-windows-installer
           path: build/windows/installer/SGE_SecDiarra_Setup.exe
+          if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload Windows EXE (raw)
-        uses: actions/upload-artifact@v4
+  release-windows:
+    needs: build-windows
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download EXE artifact
+        uses: actions/download-artifact@v4
         with:
           name: sge-secdiarra-windows-exe
-          path: build/windows/x64/runner/Release/
-          retention-days: 14
+          path: artifacts/exe
+
+      - name: Download Installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: sge-secdiarra-windows-installer
+          path: artifacts/installer
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## SGE SecDiarra Windows
+
+            ### Téléchargement
+            - [SGE_SecDiarra_Setup.exe]({{ url }}) - Installateur complet (recommandé)
+            - [sge_secdiarra.exe + dépendances]({{ url }}) - Exécutable portable + DLLs
+
+            ### Installation
+            **Option 1 - Installateur (recommandé) :**
+            1. Téléchargez `SGE_SecDiarra_Setup.exe`
+            2. Exécutez et suivez l'assistant d'installation
+
+            **Option 2 - Portable :**
+            1. Téléchargez le dossier `sge-secdiarra-windows-exe.zip`
+            2. Extrayez tout le contenu
+            3. Lancez `sge_secdiarra.exe`
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            artifacts/installer/SGE_SecDiarra_Setup.exe
+            artifacts/exe/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
